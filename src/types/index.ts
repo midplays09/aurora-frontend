@@ -1,60 +1,53 @@
-// ─── Electron API (exposed via preload.js) ────────────────
-export interface ElectronAPI {
-  closeWindow: () => Promise<void>;
-  minimizeWindow: () => Promise<void>;
-  maximizeWindow: () => Promise<void>;
-  openFolder: () => Promise<string | null>;
-  readDir: (dirPath: string) => Promise<FileEntry[]>;
-  readFileSlice: (filePath: string, start: number, end: number) => Promise<Buffer | null>;
-  fileUrl: (filePath: string) => Promise<string>;
-  readConfig: () => Promise<AppConfig | null>;
-  writeConfig: (data: AppConfig) => Promise<boolean>;
-  getConfigPath: () => Promise<string>;
-  isElectron: boolean;
+// ─── YouTube Track ────────────────────────────────────────
+export interface YouTubeTrack {
+  videoId: string;
+  title: string;
+  channelName: string;
+  thumbnail: string;
+  duration: number; // seconds
 }
 
-declare global {
-  interface Window {
-    electronAPI?: ElectronAPI;
-  }
-}
-
-// ─── Core Types ───────────────────────────────────────────
-
-export interface FileEntry {
-  name: string;
-  path: string;
-}
-
-export interface Track {
-  id: number;
-  file: File | null;
-  path: string | null;
-  url: string;
-  name: string;
-  artist: string;
-  album: string;
-  duration: number;
-  artLoaded: boolean;
-  lrcFile: File | null;
-  lrcPath: string | null;
-  // Server-side fields (if synced)
-  serverId?: string;
-  categoryId?: string | null;
-}
-
-export interface Category {
+// ─── Playlist ─────────────────────────────────────────────
+export interface Playlist {
   id: string;
   name: string;
   userId: string;
+  trackIds: string[]; // YouTube video IDs
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Favorite ─────────────────────────────────────────────
+export interface Favorite {
+  id: string;
+  userId: string;
+  videoId: string;
+  title: string;
+  channelName: string;
+  thumbnail: string;
+  duration: number;
   createdAt: string;
 }
 
-export interface Playlist {
-  name: string;
-  trackIds: number[];
+// ─── Comment ──────────────────────────────────────────────
+export interface Comment {
+  id: string;
+  userId: string;
+  userEmail: string;
+  videoId: string;
+  text: string;
+  createdAt: string;
 }
 
+// ─── Track Stats ──────────────────────────────────────────
+export interface TrackStat {
+  videoId: string;
+  totalViews: number;
+  totalWatchTimeSeconds: number;
+  totalLikes: number;
+}
+
+// ─── Radio ────────────────────────────────────────────────
 export interface RadioStation {
   id: string;
   name: string;
@@ -76,7 +69,6 @@ export interface RadioCountry {
 }
 
 // ─── Auth Types ───────────────────────────────────────────
-
 export interface User {
   id: string;
   email: string;
@@ -84,58 +76,11 @@ export interface User {
   createdAt: string;
 }
 
-export interface AuthTokens {
-  token: string;
-  refreshToken?: string;
-}
-
-// ─── Config ───────────────────────────────────────────────
-
-export interface AppConfig {
-  musicFolder: string;
-  volume: number;
-  shuffle: boolean;
-  repeat: number; // 0=off 1=all 2=one
-  lyricsVisible: boolean;
-  accentColor: string;
-  dynamicColor: boolean;
-  autoLyrics: boolean;
-  blurLyrics: boolean;
-  crossfade: boolean;
-  eqPreset: string;
-  bgEffect: string;
-  playbackSpeed: number;
-  playlists: Record<string, Playlist>;
-  listenLog: Record<string, number>;
-  liked: number[];
-  // Auth
-  authToken?: string;
-  refreshToken?: string;
-  userEmail?: string;
-}
-
-// ─── Lyrics ───────────────────────────────────────────────
-
-export interface SyncedLyricLine {
-  time: number;
-  text: string;
-}
-
-export interface LyricsResult {
-  synced?: string;
-  plain?: string;
-  source: string;
-}
-
 // ─── View Types ───────────────────────────────────────────
-
 export type ViewName =
-  | 'songs'
-  | 'albums'
-  | 'artists'
-  | 'liked'
-  | 'stats'
-  | 'categories'
-  | 'radio'
-  | 'playlist-onrepeat'
-  | 'playlist-custom';
+  | 'home'
+  | 'search'
+  | 'playlists'
+  | 'playlist-detail'
+  | 'favorites'
+  | 'radio';

@@ -1,149 +1,190 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { Radio as RadioIcon, Search, Play, Pause, Loader2, Globe } from 'lucide-react';
 import api from '@/lib/api';
 import type { RadioStation, RadioCountry } from '@/types';
-import { usePlayerStore } from '@/store/playerStore';
+
+const container = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.03 } },
+};
+const item = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { ease: [0.22, 1, 0.36, 1] as const, duration: 0.4 } },
+};
 
 export default function RadioView() {
   const [countries, setCountries] = useState<RadioCountry[]>([]);
   const [stations, setStations] = useState<RadioStation[]>([]);
-  const [selectedCountry, setSelectedCountry] = useState('CA'); // Default Canada/US
+  const [selectedCountry, setSelectedCountry] = useState('US');
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { setTracks, setCurrentIndex, setIsPlaying, currentView } = usePlayerStore();
+  const [isLoading, setIsLoading] = useState(false);
+  const [playingUrl, setPlayingUrl] = useState<string | null>(null);
+  const [audio] = useState<HTMLAudioElement | null>(typeof window !== 'undefined' ? new Audio() : null);
 
   useEffect(() => {
-    loadCountries();
-    loadStations('CA');
+    api.getRadioCountries().then((c) => {
+      setCountries(c || []);
+    }).catch(() => {});
   }, []);
 
-  const loadCountries = async () => {
+  useEffect(() => {
+    loadStations();
+  }, [selectedCountry]);
+
+  const loadStations = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const data = await api.getRadioCountries();
-      setCountries(data.slice(0, 50)); // Top 50 by station count
-    } catch (e) {
-      console.error(e);
+      const data = await api.getRadioStations(selectedCountry, 50, search);
+      setStations(data || []);
+    } catch { setStations([]); }
+    setIsLoading(false);
+  }, [selectedCountry, search]);
+
+  const togglePlay = (station: RadioStation) => {
+    if (!audio) return;
+    if (playingUrl === station.url) {
+      audio.pause();
+      setPlayingUrl(null);
+    } else {
+      audio.src = station.url;
+      audio.play().catch(() => {});
+      setPlayingUrl(station.url);
     }
   };
 
-  const loadStations = async (countryCode: string, query = '') => {
-    setLoading(true);
-    try {
-      const data = await api.getRadioStations(countryCode, 50, query);
-      setStations(data);
-    } catch (e) {
-      console.error(e);
-    }
-    setLoading(false);
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    loadStations(selectedCountry, search);
-  };
-
-  const handleCountryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const code = e.target.value;
-    setSelectedCountry(code);
-    loadStations(code, search);
-  };
-
-  const playStation = (station: RadioStation) => {
-    // Map RadioStation to Track format for PlayerStore
-    const track = {
-      id: Date.now(),
-      file: null,
-      path: null,
-      url: station.url,
-      name: station.name,
-      artist: `Live Radio • ${station.country}`,
-      album: station.tags || 'Internet Radio',
-      duration: 0, // Live stream has no duration
-      artLoaded: false,
-      lrcFile: null,
-      lrcPath: null
-    };
-
-    setTracks([track]);
-    setCurrentIndex(0);
-    setIsPlaying(true);
-  };
+  useEffect(() => {
+    return () => { audio?.pause(); };
+  }, [audio]);
 
   return (
-    <div className="flex flex-col h-full animate-fade-in">
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-4xl font-display font-bold text-white flex items-center">
-            <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse mr-4"></span>
-            Live Radio
-          </h1>
-          <p className="text-white/50 mt-2">Listen to local stations worldwide</p>
+    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] as const }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: 'rgba(34,197,94,0.1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <RadioIcon size={18} style={{ color: '#22C55E' }} />
+          </div>
+          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, letterSpacing: '-0.04em' }}>Radio</h1>
         </div>
 
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <select 
+        {/* Filters */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Search size={16} style={{
+              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+              color: 'var(--text-tertiary)',
+            }} />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && loadStations()}
+              placeholder="Search stations..."
+              className="input"
+              style={{ paddingLeft: 36 }}
+            />
+          </div>
+          <select
             value={selectedCountry}
-            onChange={handleCountryChange}
-            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#24C8D8]"
+            onChange={(e) => setSelectedCountry(e.target.value)}
+            className="input"
+            style={{ width: 180 }}
           >
-            <option value="">All Countries</option>
-            {countries.map(c => (
-              <option key={c.code} value={c.code} className="bg-gray-900">{c.name}</option>
+            {countries.length === 0 && <option value="US">United States</option>}
+            {countries.map((c) => (
+              <option key={c.code} value={c.code}>{c.name} ({c.stationCount})</option>
             ))}
           </select>
-          <input 
-            type="text" 
-            placeholder="Search stations..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-white/40 focus:outline-none focus:border-[#24C8D8] w-48"
-          />
-          <button type="submit" className="btn btn-primary px-4">Search</button>
-        </form>
-      </div>
+        </div>
+      </motion.div>
 
-      {loading ? (
-        <div className="flex justify-center py-24">
-          <div className="w-8 h-8 border-2 border-[#24C8D8] border-t-transparent rounded-full animate-spin"></div>
+      {isLoading && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
+          <Loader2 size={24} className="animate-spin" style={{ color: 'var(--text-tertiary)' }} />
         </div>
-      ) : stations.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-white/40 border-2 border-dashed border-white/10 rounded-2xl">
-          <svg className="w-12 h-12 mb-4 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></svg>
-          <p>No stations found for this query.</p>
+      )}
+
+      {!isLoading && stations.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '60px 0' }}>
+          <Globe size={40} style={{ color: 'var(--text-tertiary)', margin: '0 auto 12px' }} />
+          <p style={{ color: 'var(--text-secondary)' }}>No stations found</p>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {stations.map(station => (
-            <div 
-              key={station.id}
-              onClick={() => playStation(station)}
-              className="glass-panel p-4 flex items-center space-x-4 cursor-pointer hover:bg-white/10 transition-colors group"
-            >
-              <div className="w-14 h-14 bg-white/5 rounded-lg flex items-center justify-center overflow-hidden shrink-0 relative">
-                {station.favicon ? (
-                  <img src={station.favicon} alt={station.name} className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
-                ) : (
-                  <svg className="w-6 h-6 text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-                )}
-                
-                {/* Play overlay */}
-                <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg className="w-6 h-6 text-[#24C8D8]" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+      )}
+
+      {!isLoading && stations.length > 0 && (
+        <motion.div
+          variants={container} initial="hidden" animate="show"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}
+        >
+          {stations.map((station) => {
+            const isActive = playingUrl === station.url;
+            return (
+              <motion.div
+                key={station.id}
+                variants={item}
+                onClick={() => togglePlay(station)}
+                className="card"
+                style={{
+                  padding: 16,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  borderColor: isActive ? 'var(--accent)' : undefined,
+                  boxShadow: isActive ? '0 0 0 1px var(--accent)' : undefined,
+                }}
+              >
+                {/* Station icon */}
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10, overflow: 'hidden',
+                  background: 'var(--surface-hover)', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {station.favicon ? (
+                    <img
+                      src={station.favicon}
+                      alt=""
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  ) : (
+                    <RadioIcon size={18} style={{ color: 'var(--text-tertiary)' }} />
+                  )}
                 </div>
-              </div>
-              
-              <div className="min-w-0 flex-1">
-                <h3 className="text-white font-bold truncate group-hover:text-[#24C8D8] transition-colors">{station.name}</h3>
-                <p className="text-white/50 text-xs truncate mb-1">{station.tags || 'Various'}</p>
-                <div className="flex items-center space-x-2 text-[10px] text-white/30 uppercase tracking-wider">
-                  <span className="px-1.5 py-0.5 rounded-sm bg-white/5 border border-white/10">{station.codec || 'MP3'}</span>
-                  <span>{station.bitrate} kbps</span>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p className="truncate" style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                    {station.name}
+                  </p>
+                  <p style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)' }}>
+                    {station.bitrate > 0 ? `${station.bitrate}kbps` : station.codec || 'Stream'}
+                  </p>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
+
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: isActive ? 'var(--accent)' : 'var(--surface-hover)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: isActive ? 'white' : 'var(--text-secondary)',
+                  flexShrink: 0,
+                  transition: 'all 150ms ease',
+                }}>
+                  {isActive ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" style={{ marginLeft: 1 }} />}
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
       )}
     </div>
   );

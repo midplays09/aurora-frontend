@@ -2,125 +2,327 @@
 
 import { usePlayerStore } from '@/store/playerStore';
 import { useAuthStore } from '@/store/authStore';
-import { isElectron } from '@/lib/utils';
-import type { ViewName } from '@/types';
+import { motion } from 'framer-motion';
+import {
+  Home, Search, ListMusic, Heart, Radio, LogOut, Sun, Moon,
+  Music2, Plus, ChevronRight,
+} from 'lucide-react';
+import type { ViewName, Playlist } from '@/types';
+import { useEffect, useState } from 'react';
+import { getInitials } from '@/lib/utils';
+import api from '@/lib/api';
 
 export default function Sidebar() {
-  const { currentView, setCurrentView, playlists } = usePlayerStore();
+  const { currentView, setCurrentView, setCurrentPlaylistId, setSearchQuery } = usePlayerStore();
   const { isAuthenticated, user, logout } = useAuthStore();
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [showNewPlaylist, setShowNewPlaylist] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
 
-  const handleOpenFolder = async () => {
-    if (isElectron()) {
-      const folder = await window.electronAPI?.openFolder();
-      if (folder) {
-        // Trigger library scan - to be implemented in useAudioPlayer
-        window.dispatchEvent(new CustomEvent('app:scanFolder', { detail: folder }));
-      }
+  useEffect(() => {
+    const saved = localStorage.getItem('aurora_theme') || 'dark';
+    setTheme(saved as 'dark' | 'light');
+    document.documentElement.setAttribute('data-theme', saved);
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      api.getPlaylists().then(setPlaylists).catch(() => {});
     }
+  }, [isAuthenticated, currentView]);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('aurora_theme', next);
+    document.documentElement.setAttribute('data-theme', next);
   };
 
-  const NavItem = ({ icon, label, view }: { icon: React.ReactNode; label: string; view: ViewName | 'folder' | 'settings' }) => {
-    const isActive = currentView === view;
+  const handleCreatePlaylist = async () => {
+    if (!newPlaylistName.trim()) return;
+    try {
+      const pl = await api.createPlaylist(newPlaylistName.trim());
+      setPlaylists((prev) => [pl, ...prev]);
+      setNewPlaylistName('');
+      setShowNewPlaylist(false);
+    } catch { /* ignore */ }
+  };
+
+  const NavItem = ({ icon, label, view, onClick }: {
+    icon: React.ReactNode;
+    label: string;
+    view?: ViewName;
+    onClick?: () => void;
+  }) => {
+    const isActive = view ? currentView === view : false;
     return (
       <button
         onClick={() => {
-          if (view === 'folder') handleOpenFolder();
-          else if (view !== 'settings') setCurrentView(view as ViewName);
+          if (onClick) onClick();
+          else if (view) {
+            setCurrentView(view);
+            if (view === 'search') setSearchQuery('');
+          }
         }}
-        className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors ${
-          isActive 
-            ? 'bg-white/10 text-white font-medium' 
-            : 'text-white/60 hover:text-white hover:bg-white/5'
-        }`}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '7px 12px',
+          borderRadius: 8,
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: '0.8125rem',
+          fontWeight: isActive ? 500 : 400,
+          fontFamily: 'var(--font-sans)',
+          color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+          background: isActive ? 'var(--surface-hover)' : 'transparent',
+          transition: 'all 150ms ease',
+          position: 'relative',
+        }}
+        onMouseEnter={(e) => {
+          if (!isActive) e.currentTarget.style.background = 'var(--surface-hover)';
+        }}
+        onMouseLeave={(e) => {
+          if (!isActive) e.currentTarget.style.background = 'transparent';
+        }}
       >
-        <span className={isActive ? 'text-[#24C8D8]' : ''}>{icon}</span>
-        <span className="text-sm">{label}</span>
+        {isActive && (
+          <motion.div
+            layoutId="sidebar-indicator"
+            style={{
+              position: 'absolute',
+              left: 0, top: '50%', transform: 'translateY(-50%)',
+              width: 3, height: 16,
+              borderRadius: 4,
+              background: 'var(--accent)',
+            }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+          />
+        )}
+        <span style={{ display: 'flex', alignItems: 'center', opacity: isActive ? 1 : 0.6 }}>
+          {icon}
+        </span>
+        <span>{label}</span>
       </button>
     );
   };
 
   return (
-    <div className="w-64 h-full flex flex-col border-r border-white/5 bg-black/20 backdrop-blur-md pb-24">
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
-        
-        {/* Library Section */}
-        <div>
-          <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2 px-4">Library</h3>
-          <div className="space-y-1">
-            <NavItem 
-              view="songs" 
-              label="Songs" 
-              icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>} 
-            />
-            <NavItem 
-              view="categories" 
-              label="Categories" 
-              icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>} 
-            />
-            <NavItem 
-              view="radio" 
-              label="Radio" 
-              icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></svg>} 
-            />
-            {isElectron() && (
-              <NavItem 
-                view="folder" 
-                label="Open Folder" 
-                icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>} 
-              />
-            )}
+    <div style={{
+      width: 'var(--sidebar-width)',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      borderRight: '1px solid var(--border)',
+      background: 'var(--bg-subtle)',
+      flexShrink: 0,
+      userSelect: 'none',
+    }}>
+      {/* Logo */}
+      <div style={{
+        padding: '20px 16px 12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+      }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: 7,
+          background: 'linear-gradient(135deg, var(--accent), #3B82F6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Music2 size={14} color="white" />
+        </div>
+        <span style={{ fontSize: '0.9375rem', fontWeight: 700, letterSpacing: '-0.025em' }}>
+          Aurora
+        </span>
+      </div>
+
+      {/* Navigation */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 16px' }} className="scrollbar-thin">
+        {/* Discover */}
+        <div style={{ marginBottom: 20 }}>
+          <p style={{
+            fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-tertiary)',
+            textTransform: 'uppercase', letterSpacing: '0.05em',
+            padding: '0 12px', marginBottom: 6,
+          }}>Discover</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <NavItem icon={<Home size={16} />} label="Home" view="home" />
+            <NavItem icon={<Search size={16} />} label="Search" view="search" />
           </div>
         </div>
 
-        {/* Playlists Section */}
-        <div>
-          <div className="flex items-center justify-between px-4 mb-2">
-            <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider">Playlists</h3>
-            <button className="text-white/40 hover:text-white transition-colors">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        {/* Library */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '0 12px', marginBottom: 6,
+          }}>
+            <p style={{
+              fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-tertiary)',
+              textTransform: 'uppercase', letterSpacing: '0.05em',
+            }}>Library</p>
+            <button
+              onClick={() => setShowNewPlaylist(!showNewPlaylist)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-tertiary)', display: 'flex', padding: 2,
+                borderRadius: 4, transition: 'all 150ms ease',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; }}
+              title="Create playlist"
+            >
+              <Plus size={14} />
             </button>
           </div>
-          <div className="space-y-1">
-            <NavItem 
-              view="playlist-onrepeat" 
-              label="On Repeat" 
-              icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>} 
-            />
-            {Object.keys(playlists).map(id => (
-              <NavItem 
-                key={id}
-                view="playlist-custom" 
-                label={playlists[id].name} 
-                icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>} 
-              />
-            ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <NavItem icon={<Heart size={16} />} label="Favorites" view="favorites" />
+            <NavItem icon={<ListMusic size={16} />} label="Playlists" view="playlists" />
           </div>
+
+          {/* New Playlist Input */}
+          {showNewPlaylist && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              style={{ padding: '8px 12px' }}
+            >
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  type="text"
+                  value={newPlaylistName}
+                  onChange={(e) => setNewPlaylistName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreatePlaylist()}
+                  placeholder="Playlist name..."
+                  className="input"
+                  style={{ fontSize: '0.75rem', padding: '5px 8px' }}
+                  autoFocus
+                />
+                <button
+                  onClick={handleCreatePlaylist}
+                  className="btn btn-primary btn-sm"
+                  style={{ flexShrink: 0 }}
+                >
+                  Add
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Playlist items */}
+          {playlists.map((pl) => (
+            <button
+              key={pl.id}
+              onClick={() => {
+                setCurrentPlaylistId(pl.id);
+                setCurrentView('playlist-detail');
+              }}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '6px 12px 6px 38px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '0.8125rem',
+                fontFamily: 'var(--font-sans)',
+                color: 'var(--text-secondary)',
+                background: 'transparent',
+                borderRadius: 8,
+                transition: 'all 150ms ease',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <ChevronRight size={12} style={{ opacity: 0.4 }} />
+              <span className="truncate">{pl.name}</span>
+              <span style={{ marginLeft: 'auto', fontSize: '0.6875rem', color: 'var(--text-tertiary)' }}>
+                {pl.trackIds.length}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Live */}
+        <div>
+          <p style={{
+            fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-tertiary)',
+            textTransform: 'uppercase', letterSpacing: '0.05em',
+            padding: '0 12px', marginBottom: 6,
+          }}>Live</p>
+          <NavItem icon={<Radio size={16} />} label="Radio" view="radio" />
         </div>
       </div>
 
-      {/* User Section */}
-      <div className="p-4 border-t border-white/5 bg-black/10">
-        {isAuthenticated ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3 overflow-hidden">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#24C8D8] to-purple-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
-                {user?.email?.[0].toUpperCase()}
-              </div>
-              <div className="truncate text-sm text-white/80">
-                {user?.email}
-              </div>
+      {/* Bottom — User + Theme */}
+      <div style={{
+        padding: '12px',
+        borderTop: '1px solid var(--border)',
+      }}>
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '7px 12px',
+            borderRadius: 8,
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '0.8125rem',
+            fontFamily: 'var(--font-sans)',
+            color: 'var(--text-secondary)',
+            background: 'transparent',
+            transition: 'all 150ms ease',
+            marginBottom: 4,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+        >
+          {theme === 'dark' ? <Sun size={16} style={{ opacity: 0.6 }} /> : <Moon size={16} style={{ opacity: 0.6 }} />}
+          <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+        </button>
+
+        {/* User */}
+        {isAuthenticated && user && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '8px 12px',
+          }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: 'linear-gradient(135deg, var(--accent), #3B82F6)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '0.75rem', fontWeight: 600, color: 'white', flexShrink: 0,
+            }}>
+              {getInitials(user.email)}
             </div>
-            <button onClick={logout} className="text-white/40 hover:text-white shrink-0 ml-2" title="Logout">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <span className="truncate" style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', flex: 1 }}>
+              {user.email}
+            </span>
+            <button
+              onClick={logout}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-tertiary)', display: 'flex', padding: 4,
+                borderRadius: 4, transition: 'all 150ms ease', flexShrink: 0,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--error)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; }}
+              title="Sign out"
+            >
+              <LogOut size={14} />
             </button>
           </div>
-        ) : (
-          <button 
-            onClick={() => window.location.reload()} 
-            className="w-full btn border border-white/10 hover:bg-white/5"
-          >
-            Sign In
-          </button>
         )}
       </div>
     </div>

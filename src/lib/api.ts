@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://aurora-backend-production-e575.up.railway.app';
 
 class ApiClient {
   private client: AxiosInstance;
@@ -13,7 +13,6 @@ class ApiClient {
       timeout: 15000,
     });
 
-    // Auto-inject JWT token
     this.client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
       if (this.token) {
         config.headers.Authorization = `Bearer ${this.token}`;
@@ -21,13 +20,11 @@ class ApiClient {
       return config;
     });
 
-    // Handle 401 responses
     this.client.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
           this.token = null;
-          // Emit event for auth store to handle
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('auth:expired'));
           }
@@ -64,63 +61,96 @@ class ApiClient {
     return res.data;
   }
 
-  // ─── Categories ────────────────────────────────────
-  async getCategories() {
-    const res = await this.client.get('/api/categories');
-    return res.data.categories;
+  // ─── YouTube Search ────────────────────────────────
+  async searchYouTube(query: string, maxResults = 20) {
+    const res = await this.client.get('/api/youtube/search', {
+      params: { q: query, maxResults },
+    });
+    return res.data.results;
   }
 
-  async createCategory(name: string) {
-    const res = await this.client.post('/api/categories', { name });
-    return res.data.category;
-  }
-
-  async updateCategory(id: string, name: string) {
-    const res = await this.client.put(`/api/categories/${id}`, { name });
-    return res.data.category;
-  }
-
-  async deleteCategory(id: string) {
-    const res = await this.client.delete(`/api/categories/${id}`);
+  async getVideoDetails(videoId: string) {
+    const res = await this.client.get(`/api/youtube/video/${videoId}`);
     return res.data;
   }
 
-  // ─── Tracks ────────────────────────────────────────
-  async getTracks(categoryId?: string) {
-    const params = categoryId ? { category: categoryId } : {};
-    const res = await this.client.get('/api/tracks', { params });
-    return res.data.tracks;
+  // ─── Playlists ─────────────────────────────────────
+  async getPlaylists() {
+    const res = await this.client.get('/api/playlists');
+    return res.data.playlists;
   }
 
-  async createTrack(data: {
-    title: string;
-    artist: string;
-    album?: string;
-    duration?: number;
-    categoryId?: string | null;
-  }) {
-    const res = await this.client.post('/api/tracks', data);
-    return res.data.track;
+  async createPlaylist(name: string) {
+    const res = await this.client.post('/api/playlists', { name });
+    return res.data.playlist;
   }
 
-  async updateTrack(id: string, data: Partial<{
-    title: string;
-    artist: string;
-    album: string;
-    duration: number;
-  }>) {
-    const res = await this.client.put(`/api/tracks/${id}`, data);
-    return res.data.track;
+  async updatePlaylist(id: string, data: { name?: string; trackIds?: string[] }) {
+    const res = await this.client.put(`/api/playlists/${id}`, data);
+    return res.data.playlist;
   }
 
-  async deleteTrack(id: string) {
-    const res = await this.client.delete(`/api/tracks/${id}`);
+  async deletePlaylist(id: string) {
+    const res = await this.client.delete(`/api/playlists/${id}`);
     return res.data;
   }
 
-  async assignTrackCategory(trackId: string, categoryId: string | null) {
-    const res = await this.client.put(`/api/tracks/${trackId}/category`, { categoryId });
-    return res.data.track;
+  async addTrackToPlaylist(playlistId: string, videoId: string) {
+    const res = await this.client.post(`/api/playlists/${playlistId}/tracks`, { videoId });
+    return res.data.playlist;
+  }
+
+  async removeTrackFromPlaylist(playlistId: string, videoId: string) {
+    const res = await this.client.delete(`/api/playlists/${playlistId}/tracks/${videoId}`);
+    return res.data.playlist;
+  }
+
+  // ─── Favorites ─────────────────────────────────────
+  async getFavorites() {
+    const res = await this.client.get('/api/favorites');
+    return res.data.favorites;
+  }
+
+  async addFavorite(track: { videoId: string; title: string; channelName: string; thumbnail: string; duration: number }) {
+    const res = await this.client.post('/api/favorites', track);
+    return res.data;
+  }
+
+  async removeFavorite(videoId: string) {
+    const res = await this.client.delete(`/api/favorites/${videoId}`);
+    return res.data;
+  }
+
+  async checkFavorite(videoId: string) {
+    const res = await this.client.get(`/api/favorites/check/${videoId}`);
+    return res.data.isFavorited;
+  }
+
+  // ─── Comments ──────────────────────────────────────
+  async getComments(videoId: string) {
+    const res = await this.client.get(`/api/comments/${videoId}`);
+    return res.data.comments;
+  }
+
+  async addComment(videoId: string, text: string) {
+    const res = await this.client.post('/api/comments', { videoId, text });
+    return res.data.comment;
+  }
+
+  async deleteComment(id: string) {
+    const res = await this.client.delete(`/api/comments/${id}`);
+    return res.data;
+  }
+
+  // ─── Track Stats ───────────────────────────────────
+  async recordView(videoId: string, watchTimeSeconds: number) {
+    const res = await this.client.post('/api/stats/view', { videoId, watchTimeSeconds });
+    return res.data;
+  }
+
+  async getTrackStats(videoId: string) {
+    const res = await this.client.get(`/api/stats/${videoId}`);
+    return res.data;
   }
 
   // ─── Radio ─────────────────────────────────────────

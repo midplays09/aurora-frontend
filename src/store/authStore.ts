@@ -29,7 +29,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const data = await api.login(email, password);
       if (data.token) {
         api.setToken(data.token);
-        // Fetch user profile
+        localStorage.setItem('aurora_token', data.token);
         try {
           const me = await api.getMe();
           set({
@@ -50,8 +50,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
       set({ error: 'Login failed.', isLoading: false });
       return false;
-    } catch (err: any) {
-      const msg = err.response?.data?.error || err.response?.data?.message || 'Login failed.';
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string; message?: string } } };
+      const msg = error.response?.data?.error || error.response?.data?.message || 'Login failed.';
       set({ error: msg, isLoading: false });
       return false;
     }
@@ -63,8 +64,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       await api.register(email, password);
       set({ isLoading: false });
       return true;
-    } catch (err: any) {
-      const msg = err.response?.data?.error || 'Registration failed.';
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      const msg = error.response?.data?.error || 'Registration failed.';
       set({ error: msg, isLoading: false });
       return false;
     }
@@ -72,6 +74,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: () => {
     api.setToken(null);
+    localStorage.removeItem('aurora_token');
     set({ user: null, token: null, isAuthenticated: false, error: null });
   },
 
@@ -83,6 +86,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       return true;
     } catch {
       api.setToken(null);
+      localStorage.removeItem('aurora_token');
       set({ token: null, isAuthenticated: false });
       return false;
     }

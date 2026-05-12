@@ -1,110 +1,121 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from '@/store/authStore';
 import { usePlayerStore } from '@/store/playerStore';
-import { isElectron, isOnline } from '@/lib/utils';
-import LoginForm from '@/components/Auth/LoginForm';
+import AuthPage from '@/components/Auth/AuthPage';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import PlayerBar from '@/components/Player/PlayerBar';
-import LyricsPanel from '@/components/Lyrics/LyricsPanel';
-import BackgroundEffects from '@/components/UI/BackgroundEffects';
-import TopBar from '@/components/UI/TopBar';
-// Views
-import SongsView from '@/components/Library/SongsView';
-import CategoriesView from '@/components/Categories/CategoryView';
+import YouTubePlayer from '@/components/Player/YouTubePlayer';
+import HomeView from '@/components/Home/HomeView';
+import SearchView from '@/components/Search/SearchView';
+import PlaylistsView from '@/components/Playlists/PlaylistsView';
+import PlaylistDetailView from '@/components/Playlists/PlaylistDetailView';
+import FavoritesView from '@/components/Favorites/FavoritesView';
 import RadioView from '@/components/Radio/RadioView';
 
 export default function Home() {
   const { isAuthenticated, restoreSession, isLoading: authLoading } = useAuthStore();
-  const { currentView } = usePlayerStore();
-  
+  const { currentView, currentTrack } = usePlayerStore();
   const [isInitializing, setIsInitializing] = useState(true);
-  const [offlineMode, setOfflineMode] = useState(false);
 
   useEffect(() => {
     const init = async () => {
-      // Check online status
-      const online = isOnline();
-      
-      if (!online) {
-        setOfflineMode(true);
-        setIsInitializing(false);
-        return;
-      }
-
-      // Try to restore session
-      let token = null;
-      if (isElectron()) {
-        const config = await window.electronAPI?.readConfig();
-        token = config?.authToken;
-      } else {
-        token = localStorage.getItem('aurora_token');
-      }
-
+      const token = localStorage.getItem('aurora_token');
       if (token) {
         await restoreSession(token);
       }
-      
       setIsInitializing(false);
     };
-
     init();
-
-    const handleOnline = () => setOfflineMode(false);
-    const handleOffline = () => setOfflineMode(true);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
   }, [restoreSession]);
 
+  // Loading screen
   if (isInitializing || authLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#0d0d0f]">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-[#24C8D8]"></div>
+      <div style={{
+        display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--bg)', flexDirection: 'column', gap: 16,
+      }}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+          style={{
+            width: 40, height: 40, borderRadius: 10,
+            background: 'linear-gradient(135deg, var(--accent), #3B82F6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+            <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+          </svg>
+        </motion.div>
+        <div style={{
+          width: 20, height: 20,
+          border: '2px solid var(--border)',
+          borderTopColor: 'var(--accent)',
+          borderRadius: '50%',
+        }} className="animate-spin" />
       </div>
     );
   }
 
-  // Show login if not authenticated and not in offline mode
-  if (!isAuthenticated && !offlineMode) {
-    return <LoginForm onContinueOffline={() => setOfflineMode(true)} />;
+  // Auth screen
+  if (!isAuthenticated) {
+    return <AuthPage />;
   }
 
-  // Render main app
+  // Main app
+  const renderView = () => {
+    switch (currentView) {
+      case 'home': return <HomeView />;
+      case 'search': return <SearchView />;
+      case 'playlists': return <PlaylistsView />;
+      case 'playlist-detail': return <PlaylistDetailView />;
+      case 'favorites': return <FavoritesView />;
+      case 'radio': return <RadioView />;
+      default: return <HomeView />;
+    }
+  };
+
   return (
-    <div className="relative flex h-screen w-screen overflow-hidden text-white selection:bg-[#24C8D8] selection:text-black">
-      <BackgroundEffects />
-      
-      {/* Top drag bar for Electron */}
-      <TopBar />
+    <div style={{
+      display: 'flex',
+      height: '100vh',
+      width: '100vw',
+      overflow: 'hidden',
+      background: 'var(--bg)',
+      color: 'var(--text-primary)',
+    }}>
+      <Sidebar />
 
-      <div className="z-10 flex h-full w-full flex-col pt-8">
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar />
-          
-          <main className="flex-1 overflow-y-auto overflow-x-hidden p-6 pb-24">
-            {currentView === 'songs' && <SongsView />}
-            {currentView === 'categories' && <CategoriesView />}
-            {currentView === 'radio' && <RadioView />}
-            {/* Add other views here */}
-            {currentView !== 'songs' && currentView !== 'categories' && currentView !== 'radio' && (
-              <div className="flex h-full items-center justify-center">
-                <h2 className="text-2xl font-bold text-gray-500">Coming Soon</h2>
-              </div>
-            )}
-          </main>
+      <main
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          padding: '32px 40px',
+          paddingBottom: currentTrack ? 'calc(var(--player-height) + 32px)' : 32,
+        }}
+        className="scrollbar-thin"
+      >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentView}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] as const }}
+          >
+            {renderView()}
+          </motion.div>
+        </AnimatePresence>
+      </main>
 
-          <LyricsPanel />
-        </div>
-
-        <PlayerBar />
-      </div>
+      <PlayerBar />
+      <YouTubePlayer />
     </div>
   );
 }

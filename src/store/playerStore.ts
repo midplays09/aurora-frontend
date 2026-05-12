@@ -1,108 +1,149 @@
 import { create } from 'zustand';
-import type { Track, Playlist, ViewName, AppConfig } from '@/types';
+import type { YouTubeTrack, ViewName } from '@/types';
 
 interface PlayerState {
-  // Library
-  tracks: Track[];
-  filteredTracks: Track[];
-  currentIndex: number;
+  // Current playback
+  currentTrack: YouTubeTrack | null;
+  queue: YouTubeTrack[];
+  history: YouTubeTrack[];
   isPlaying: boolean;
-  isShuffle: boolean;
-  repeatMode: number; // 0=off 1=all 2=one
+  currentTime: number;
+  duration: number;
   volume: number;
   isMuted: boolean;
-  liked: Set<number>;
+  repeatMode: number; // 0=off 1=all 2=one
+  isShuffle: boolean;
+
+  // Navigation
   currentView: ViewName;
-
-  // Playlists
-  playlists: Record<string, Playlist>;
   currentPlaylistId: string | null;
+  searchQuery: string;
 
-  // Listen log (On Repeat)
-  listenLog: Record<string, number>;
-
-  // Lyrics
-  lyricsVisible: boolean;
-  lyricsOverlayOpen: boolean;
-
-  // Config
-  config: Partial<AppConfig>;
+  // Player ref
+  playerReady: boolean;
 
   // Actions
-  setTracks: (tracks: Track[]) => void;
-  setFilteredTracks: (tracks: Track[]) => void;
-  setCurrentIndex: (index: number) => void;
+  setCurrentTrack: (track: YouTubeTrack | null) => void;
+  playTrack: (track: YouTubeTrack) => void;
+  addToQueue: (track: YouTubeTrack) => void;
+  removeFromQueue: (index: number) => void;
+  clearQueue: () => void;
+  playNext: () => void;
+  playPrevious: () => void;
   setIsPlaying: (playing: boolean) => void;
-  toggleShuffle: () => void;
-  cycleRepeat: () => void;
+  setCurrentTime: (time: number) => void;
+  setDuration: (duration: number) => void;
   setVolume: (vol: number) => void;
   toggleMute: () => void;
-  toggleLike: (id: number) => void;
+  cycleRepeat: () => void;
+  toggleShuffle: () => void;
   setCurrentView: (view: ViewName) => void;
-  setPlaylists: (pl: Record<string, Playlist>) => void;
   setCurrentPlaylistId: (id: string | null) => void;
-  addPlaylist: (id: string, playlist: Playlist) => void;
-  removePlaylist: (id: string) => void;
-  setListenLog: (log: Record<string, number>) => void;
-  recordListenTime: (key: string, seconds: number) => void;
-  toggleLyricsVisible: () => void;
-  toggleLyricsOverlay: () => void;
-  setLyricsOverlayOpen: (open: boolean) => void;
-  setConfig: (config: Partial<AppConfig>) => void;
-  setLikedSet: (liked: number[]) => void;
+  setSearchQuery: (query: string) => void;
+  setPlayerReady: (ready: boolean) => void;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
-  tracks: [],
-  filteredTracks: [],
-  currentIndex: -1,
+  currentTrack: null,
+  queue: [],
+  history: [],
   isPlaying: false,
-  isShuffle: false,
-  repeatMode: 0,
-  volume: 0.8,
+  currentTime: 0,
+  duration: 0,
+  volume: 80,
   isMuted: false,
-  liked: new Set(),
-  currentView: 'songs',
-  playlists: {},
+  repeatMode: 0,
+  isShuffle: false,
+  currentView: 'home',
   currentPlaylistId: null,
-  listenLog: {},
-  lyricsVisible: true,
-  lyricsOverlayOpen: false,
-  config: {},
+  searchQuery: '',
+  playerReady: false,
 
-  setTracks: (tracks) => set({ tracks, filteredTracks: [...tracks] }),
-  setFilteredTracks: (filteredTracks) => set({ filteredTracks }),
-  setCurrentIndex: (currentIndex) => set({ currentIndex }),
+  setCurrentTrack: (track) => set({ currentTrack: track }),
+
+  playTrack: (track) => {
+    const { currentTrack, history } = get();
+    const newHistory = currentTrack
+      ? [currentTrack, ...history].slice(0, 50)
+      : history;
+    set({
+      currentTrack: track,
+      isPlaying: true,
+      currentTime: 0,
+      history: newHistory,
+    });
+  },
+
+  addToQueue: (track) => set((s) => ({ queue: [...s.queue, track] })),
+
+  removeFromQueue: (index) =>
+    set((s) => ({ queue: s.queue.filter((_, i) => i !== index) })),
+
+  clearQueue: () => set({ queue: [] }),
+
+  playNext: () => {
+    const { queue, currentTrack, history, repeatMode, isShuffle } = get();
+    if (repeatMode === 2 && currentTrack) {
+      // Repeat one — restart same track
+      set({ currentTime: 0, isPlaying: true });
+      return;
+    }
+    if (queue.length > 0) {
+      const nextIndex = isShuffle
+        ? Math.floor(Math.random() * queue.length)
+        : 0;
+      const next = queue[nextIndex];
+      const newQueue = queue.filter((_, i) => i !== nextIndex);
+      const newHistory = currentTrack
+        ? [currentTrack, ...history].slice(0, 50)
+        : history;
+      set({
+        currentTrack: next,
+        queue: newQueue,
+        history: newHistory,
+        isPlaying: true,
+        currentTime: 0,
+      });
+    } else if (repeatMode === 1 && history.length > 0) {
+      // Repeat all — cycle through history
+      const reversed = [...history].reverse();
+      set({
+        currentTrack: reversed[0],
+        queue: reversed.slice(1),
+        history: [],
+        isPlaying: true,
+        currentTime: 0,
+      });
+    } else {
+      set({ isPlaying: false });
+    }
+  },
+
+  playPrevious: () => {
+    const { history, currentTrack, queue } = get();
+    if (history.length > 0) {
+      const prev = history[0];
+      const newHistory = history.slice(1);
+      const newQueue = currentTrack ? [currentTrack, ...queue] : queue;
+      set({
+        currentTrack: prev,
+        history: newHistory,
+        queue: newQueue,
+        isPlaying: true,
+        currentTime: 0,
+      });
+    }
+  },
+
   setIsPlaying: (isPlaying) => set({ isPlaying }),
-  toggleShuffle: () => set((s) => ({ isShuffle: !s.isShuffle })),
-  cycleRepeat: () => set((s) => ({ repeatMode: (s.repeatMode + 1) % 3 })),
+  setCurrentTime: (currentTime) => set({ currentTime }),
+  setDuration: (duration) => set({ duration }),
   setVolume: (volume) => set({ volume }),
   toggleMute: () => set((s) => ({ isMuted: !s.isMuted })),
-  toggleLike: (id) =>
-    set((s) => {
-      const next = new Set(s.liked);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return { liked: next };
-    }),
+  cycleRepeat: () => set((s) => ({ repeatMode: (s.repeatMode + 1) % 3 })),
+  toggleShuffle: () => set((s) => ({ isShuffle: !s.isShuffle })),
   setCurrentView: (currentView) => set({ currentView }),
-  setPlaylists: (playlists) => set({ playlists }),
   setCurrentPlaylistId: (currentPlaylistId) => set({ currentPlaylistId }),
-  addPlaylist: (id, playlist) =>
-    set((s) => ({ playlists: { ...s.playlists, [id]: playlist } })),
-  removePlaylist: (id) =>
-    set((s) => {
-      const next = { ...s.playlists };
-      delete next[id];
-      return { playlists: next };
-    }),
-  setListenLog: (listenLog) => set({ listenLog }),
-  recordListenTime: (key, seconds) =>
-    set((s) => ({
-      listenLog: { ...s.listenLog, [key]: (s.listenLog[key] || 0) + seconds },
-    })),
-  toggleLyricsVisible: () => set((s) => ({ lyricsVisible: !s.lyricsVisible })),
-  toggleLyricsOverlay: () => set((s) => ({ lyricsOverlayOpen: !s.lyricsOverlayOpen })),
-  setLyricsOverlayOpen: (open) => set({ lyricsOverlayOpen: open }),
-  setConfig: (config) => set((s) => ({ config: { ...s.config, ...config } })),
-  setLikedSet: (liked) => set({ liked: new Set(liked) }),
+  setSearchQuery: (searchQuery) => set({ searchQuery }),
+  setPlayerReady: (playerReady) => set({ playerReady }),
 }));
