@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Play, Heart, Plus, Loader2 } from 'lucide-react';
+import { Search, Play, Heart, Plus, Loader2, ListPlus, BarChart3, X } from 'lucide-react';
 import { usePlayerStore } from '@/store/playerStore';
 import { formatDuration } from '@/lib/utils';
 import api from '@/lib/api';
-import type { YouTubeTrack } from '@/types';
+import type { Playlist, YouTubeTrack } from '@/types';
 
 const container = {
   hidden: { opacity: 0 },
@@ -18,11 +18,24 @@ const item = {
 };
 
 export default function SearchView() {
-  const { playTrack, addToQueue } = usePlayerStore();
-  const [query, setQuery] = useState('');
+  const { playTrack, addToQueue, searchQuery } = usePlayerStore();
+  const [query, setQuery] = useState(searchQuery);
   const [results, setResults] = useState<YouTubeTrack[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState('');
+  const [activeTrack, setActiveTrack] = useState<YouTubeTrack | null>(null);
+  const [trackStats, setTrackStats] = useState<{ totalViews?: number; totalWatchTimeSeconds?: number; totalLikes?: number } | null>(null);
+  const [comments, setComments] = useState<Array<{ id: string; username?: string; displayName?: string; userEmail?: string; text: string; createdAt: string }>>([]);
+  const [commentText, setCommentText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+
+  useEffect(() => {
+    api.getPlaylists().then((data) => {
+      setPlaylists(data || []);
+      if (data?.[0]?.id) setSelectedPlaylistId(data[0].id);
+    }).catch(() => {});
+  }, []);
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return;
@@ -49,6 +62,41 @@ export default function SearchView() {
     } catch { /* already favorited or error */ }
   };
 
+  const handleAddToPlaylist = async (track: YouTubeTrack) => {
+    if (!selectedPlaylistId) return;
+    try {
+      await api.addTrackToPlaylist(selectedPlaylistId, track.videoId);
+    } catch { /* playlist endpoint may reject duplicates */ }
+  };
+
+  const openInsights = async (track: YouTubeTrack) => {
+    setActiveTrack(track);
+    setTrackStats(null);
+    setComments([]);
+    try {
+      const [stats, nextComments] = await Promise.all([
+        api.getTrackStats(track.videoId).catch(() => null),
+        api.getComments(track.videoId).catch(() => []),
+      ]);
+      setTrackStats(stats);
+      setComments(nextComments || []);
+    } catch {
+      setTrackStats(null);
+      setComments([]);
+    }
+  };
+
+  const submitComment = async () => {
+    if (!activeTrack || !commentText.trim()) return;
+    try {
+      const comment = await api.addComment(activeTrack.videoId, commentText.trim());
+      setComments((prev) => [comment, ...prev]);
+      setCommentText('');
+    } catch {
+      // Leave comment text in place for retry.
+    }
+  };
+
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
       {/* Search Header */}
@@ -57,7 +105,7 @@ export default function SearchView() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] as const }}
       >
-        <h1 style={{ fontSize: '1.875rem', fontWeight: 700, letterSpacing: '-0.04em', marginBottom: 20 }}>
+        <h1 style={{ fontSize: '1.875rem', fontWeight: 700, letterSpacing: 0, marginBottom: 20 }}>
           Search
         </h1>
 
@@ -119,9 +167,8 @@ export default function SearchView() {
       {!isLoading && results.length > 0 && (
         <motion.div variants={container} initial="hidden" animate="show">
           {/* Column header */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '48px 1fr 140px 60px 80px',
+          <div className="spotify-table-head" style={{
+            gridTemplateColumns: '48px 1fr 140px 60px 150px',
             gap: 12,
             padding: '0 12px 8px',
             fontSize: '0.6875rem',
@@ -145,7 +192,7 @@ export default function SearchView() {
               variants={item}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '48px 1fr 140px 60px 80px',
+                gridTemplateColumns: '48px 1fr 140px 60px 150px',
                 gap: 12,
                 alignItems: 'center',
                 padding: '8px 12px',
@@ -209,10 +256,70 @@ export default function SearchView() {
                 >
                   <Plus size={14} />
                 </button>
+                <button
+                  onClick={() => handleAddToPlaylist(track)}
+                  className="btn-icon"
+                  title="Add to selected playlist"
+                  disabled={!selectedPlaylistId}
+                >
+                  <ListPlus size={14} />
+                </button>
+                <button
+                  onClick={() => openInsights(track)}
+                  className="btn-icon"
+                  title="Comments and stats"
+                >
+                  <BarChart3 size={14} />
+                </button>
               </div>
             </motion.div>
           ))}
         </motion.div>
+      )}
+
+      {results.length > 0 && playlists.length > 0 && (
+        <div className="playlist-target">
+          <span>Add-to-playlist target</span>
+          <select className="input" value={selectedPlaylistId} onChange={(e) => setSelectedPlaylistId(e.target.value)}>
+            {playlists.map((playlist) => <option key={playlist.id} value={playlist.id}>{playlist.name}</option>)}
+          </select>
+        </div>
+      )}
+
+      {activeTrack && (
+        <motion.aside
+          className="insight-drawer"
+          initial={{ opacity: 0, x: 28 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 28 }}
+        >
+          <div className="insight-head">
+            <div>
+              <p className="eyebrow">Track insight</p>
+              <h3>{activeTrack.title}</h3>
+            </div>
+            <button className="btn-icon" onClick={() => setActiveTrack(null)}><X size={15} /></button>
+          </div>
+          <div className="stat-strip">
+            <span><strong>{trackStats?.totalViews ?? 0}</strong> views</span>
+            <span><strong>{formatDuration(trackStats?.totalWatchTimeSeconds ?? 0)}</strong> watched</span>
+            <span><strong>{trackStats?.totalLikes ?? 0}</strong> likes</span>
+          </div>
+          <div className="comment-box">
+            <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Add a comment..." />
+            <button className="btn btn-primary btn-sm" onClick={submitComment}>Post</button>
+          </div>
+          <div className="comment-list">
+            {comments.length === 0 ? (
+              <p>No comments yet.</p>
+            ) : comments.map((comment) => (
+              <div key={comment.id} className="comment-item">
+                <strong>{comment.displayName || comment.username || comment.userEmail || 'User'}</strong>
+                <span>{comment.text}</span>
+              </div>
+            ))}
+          </div>
+        </motion.aside>
       )}
 
       {/* Empty state */}

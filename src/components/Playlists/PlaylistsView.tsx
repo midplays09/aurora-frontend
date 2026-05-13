@@ -75,7 +75,7 @@ export default function PlaylistsView() {
             }}>
               <ListMusic size={18} style={{ color: '#3B82F6' }} />
             </div>
-            <h1 style={{ fontSize: '1.875rem', fontWeight: 700, letterSpacing: '-0.04em' }}>Playlists</h1>
+            <h1 style={{ fontSize: '1.875rem', fontWeight: 700, letterSpacing: 0 }}>Playlists</h1>
           </div>
           <button onClick={() => setShowCreate(true)} className="btn btn-primary btn-sm">
             <Plus size={14} /> New Playlist

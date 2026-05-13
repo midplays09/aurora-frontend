@@ -7,6 +7,24 @@ export interface YouTubeTrack {
   duration: number; // seconds
 }
 
+export interface LibraryTrack {
+  id: string;
+  title: string;
+  artist: string;
+  album?: string | null;
+  duration: number;
+  categoryId?: string | null;
+  userId: string;
+  createdAt: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  userId: string;
+  createdAt: string;
+}
+
 // ─── Playlist ─────────────────────────────────────────────
 export interface Playlist {
   id: string;
@@ -33,7 +51,9 @@ export interface Favorite {
 export interface Comment {
   id: string;
   userId: string;
-  userEmail: string;
+  userEmail?: string;
+  username?: string;
+  displayName?: string;
   videoId: string;
   text: string;
   createdAt: string;
@@ -72,6 +92,8 @@ export interface RadioCountry {
 export interface User {
   id: string;
   email: string;
+  username?: string | null;
+  displayName?: string;
   roles: string[];
   createdAt: string;
 }
@@ -80,6 +102,7 @@ export interface User {
 export type ViewName =
   | 'home'
   | 'search'
+  | 'library'
   | 'playlists'
   | 'playlist-detail'
   | 'favorites'

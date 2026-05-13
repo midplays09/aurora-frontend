@@ -10,7 +10,7 @@ interface AuthState {
   error: string | null;
 
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, password: string, username: string) => Promise<boolean>;
   logout: () => void;
   restoreSession: (token: string) => Promise<boolean>;
   clearError: () => void;
@@ -40,7 +40,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           });
         } catch {
           set({
-            user: { id: '', email, roles: ['ROLE_USER'], createdAt: '' },
+            user: { id: '', email, username: null, displayName: email.split('@')[0], roles: ['ROLE_USER'], createdAt: '' },
             token: data.token,
             isAuthenticated: true,
             isLoading: false,
@@ -58,10 +58,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  register: async (email, password) => {
+  register: async (email, password, username) => {
     set({ isLoading: true, error: null });
     try {
-      await api.register(email, password);
+      await api.register(email, password, username);
       set({ isLoading: false });
       return true;
     } catch (err: unknown) {

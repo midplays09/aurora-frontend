@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { Music2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export default function AuthPage() {
   const { login, register, isLoading, error, clearError } = useAuthStore();
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -18,6 +19,7 @@ export default function AuthPage() {
     clearError();
     setSuccessMsg('');
     setPassword('');
+    setUsername('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,118 +28,102 @@ export default function AuthPage() {
     setSuccessMsg('');
 
     if (mode === 'register') {
-      const success = await register(email, password);
+      const success = await register(email, password, username);
       if (success) {
         setSuccessMsg('Account created successfully. Sign in to continue.');
         setMode('login');
         setPassword('');
       }
-    } else {
-      await login(email, password);
+      return;
     }
+
+    await login(email, password);
   };
 
   return (
-    <div className="relative flex h-screen w-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
-      {/* Gradient background mesh — Linear-style */}
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        background: 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(139,92,246,0.15), transparent)',
-        pointerEvents: 'none',
-      }} />
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        background: 'radial-gradient(ellipse 60% 40% at 80% 100%, rgba(59,130,246,0.08), transparent)',
-        pointerEvents: 'none',
-      }} />
+    <div className="auth-shell" style={{ background: 'var(--bg)' }}>
+      <div className="auth-grid-glow" />
+      <div className="auth-hairline top" />
+      <div className="auth-hairline bottom" />
 
-      {/* Left — Branding Panel */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
-        className="hidden lg:flex flex-col justify-between w-1/2 p-16 relative z-10"
+        className="auth-brand-panel"
       >
-        <div className="flex items-center gap-3">
-          <div style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: 'linear-gradient(135deg, var(--accent), #3B82F6)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Music2 size={20} color="white" />
-          </div>
-          <span style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.025em' }}>
-            Aurora
-          </span>
+        <div className="auth-logo-row">
+          <span>Aurora</span>
+          <span className="auth-nav-pill">Private beta</span>
         </div>
 
-        <div>
+        <div className="auth-hero-copy">
+          <span className="auth-eyebrow">Designed for listening systems</span>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
-            style={{
-              fontSize: '3.5rem', fontWeight: 700, letterSpacing: '-0.04em',
-              lineHeight: 1.1, color: 'var(--text-primary)', maxWidth: 500,
-            }}
+            transition={{ delay: 0.18, duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
           >
-            Music, reimagined for you.
+            The focused audio workspace.
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35, duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
-            style={{
-              marginTop: 20, fontSize: '1.125rem', color: 'var(--text-secondary)',
-              maxWidth: 440, lineHeight: 1.6,
-            }}
+            transition={{ delay: 0.32, duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
           >
-            Search millions of tracks, build playlists, discover new music — all in one beautiful experience.
+            Search, collect, organize, and play from one fast interface with a calm Linear-inspired surface.
           </motion.p>
         </div>
 
-        <p style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>
-          © 2026 Aurora. Built with ♥
-        </p>
+        <div className="auth-preview" aria-hidden="true">
+          <div className="auth-preview-bar"><span /><span /><span /></div>
+          <div className="auth-preview-row active"><span>Discover queue</span><strong>12</strong></div>
+          <div className="auth-preview-row"><span>Library tracks</span><strong>48</strong></div>
+          <div className="auth-preview-row"><span>Live radio</span><strong>On</strong></div>
+        </div>
       </motion.div>
 
-      {/* Right — Form Panel */}
-      <div className="flex-1 flex items-center justify-center relative z-10 p-8">
+      <div className="auth-form-stage">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }}
-          style={{
-            width: '100%', maxWidth: 400,
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 16, padding: 40,
-          }}
+          className="auth-card"
         >
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: 'linear-gradient(135deg, var(--accent), #3B82F6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Music2 size={16} color="white" />
-            </div>
-            <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Aurora</span>
+          <div className="auth-mobile-logo">
+            <span>Aurora</span>
           </div>
 
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.025em', marginBottom: 4 }}>
+          <div className="auth-card-kicker">Secure access</div>
+          <h2 style={{ fontSize: '1.55rem', fontWeight: 700, letterSpacing: 0, marginBottom: 6 }}>
             {mode === 'login' ? 'Welcome back' : 'Create your account'}
           </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: 32 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: 28 }}>
             {mode === 'login'
-              ? 'Sign in to your Aurora account'
-              : 'Start your music journey today'}
+              ? 'Sign in to continue to your workspace.'
+              : 'Start with a clean listening workspace.'}
           </p>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {mode === 'register' && (
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                  Username
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="input"
+                  placeholder="mark"
+                  autoComplete="username"
+                  minLength={2}
+                  maxLength={40}
+                />
+              </div>
+            )}
+
             <div>
               <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>
                 Email
@@ -165,7 +151,7 @@ export default function AuthPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="input"
                   style={{ paddingRight: 40 }}
-                  placeholder="••••••••"
+                  placeholder="Password"
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 />
                 <button
@@ -176,6 +162,7 @@ export default function AuthPage() {
                     background: 'none', border: 'none', cursor: 'pointer',
                     color: 'var(--text-tertiary)', display: 'flex',
                   }}
+                  title={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -221,25 +208,20 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="btn btn-primary"
-              style={{
-                marginTop: 8, padding: '10px 20px', fontSize: '0.875rem',
-                borderRadius: 10, gap: 8,
-                opacity: isLoading ? 0.7 : 1,
-              }}
+              className="btn btn-primary auth-submit"
             >
               {isLoading ? (
                 <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%' }} className="animate-spin" />
               ) : (
                 <>
-                  {mode === 'login' ? 'Sign In' : 'Create Account'}
+                  {mode === 'login' ? 'Sign in' : 'Create account'}
                   <ArrowRight size={16} />
                 </>
               )}
             </button>
           </form>
 
-          <div style={{ marginTop: 24, textAlign: 'center' }}>
+          <div style={{ marginTop: 22, textAlign: 'center' }}>
             <button
               onClick={switchMode}
               style={{
@@ -248,9 +230,9 @@ export default function AuthPage() {
               }}
             >
               {mode === 'login' ? (
-                <>Don&apos;t have an account? <span style={{ color: 'var(--accent)', fontWeight: 500 }}>Sign up</span></>
+                <>No account yet? <span style={{ color: 'var(--accent)', fontWeight: 600 }}>Sign up</span></>
               ) : (
-                <>Already have an account? <span style={{ color: 'var(--accent)', fontWeight: 500 }}>Sign in</span></>
+                <>Already have an account? <span style={{ color: 'var(--accent)', fontWeight: 600 }}>Sign in</span></>
               )}
             </button>
           </div>

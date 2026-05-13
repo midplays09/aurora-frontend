@@ -25,9 +25,26 @@ export default function PlaylistDetailView() {
       const playlists = await api.getPlaylists();
       const pl = playlists.find((p: Playlist) => p.id === currentPlaylistId);
       setPlaylist(pl || null);
-      // For now, track metadata isn't stored in playlist — we'd need to fetch from YouTube
-      // Setting empty tracks array as placeholder
-      setTracks([]);
+      if (pl?.trackIds?.length) {
+        const detailResults = await Promise.all(
+          pl.trackIds.map((videoId: string) => api.getVideoDetails(videoId).catch(() => null))
+        );
+        const hydratedTracks = detailResults
+          .map((detail, index) => {
+            if (!detail) return null;
+            return {
+              videoId: pl.trackIds[index],
+              title: detail.title || detail.name || pl.trackIds[index],
+              channelName: detail.channelName || detail.channelTitle || 'YouTube',
+              thumbnail: detail.thumbnail || detail.thumbnails?.medium?.url || detail.thumbnails?.default?.url || '',
+              duration: detail.duration || 0,
+            };
+          })
+          .filter(Boolean) as YouTubeTrack[];
+        setTracks(hydratedTracks);
+      } else {
+        setTracks([]);
+      }
     } catch { /* ignore */ }
     setIsLoading(false);
   };
@@ -37,6 +54,7 @@ export default function PlaylistDetailView() {
     try {
       const updated = await api.removeTrackFromPlaylist(currentPlaylistId, videoId);
       setPlaylist(updated);
+      setTracks((prev) => prev.filter((track) => track.videoId !== videoId));
     } catch { /* ignore */ }
   };
 
@@ -73,7 +91,7 @@ export default function PlaylistDetailView() {
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
               <div>
-                <h1 style={{ fontSize: '1.875rem', fontWeight: 700, letterSpacing: '-0.04em', marginBottom: 4 }}>
+                <h1 style={{ fontSize: '1.875rem', fontWeight: 700, letterSpacing: 0, marginBottom: 4 }}>
                   {playlist.name}
                 </h1>
                 <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
@@ -98,9 +116,15 @@ export default function PlaylistDetailView() {
               </div>
             ) : (
               <div>
-                {playlist.trackIds.map((videoId, index) => (
+                {(tracks.length ? tracks : playlist.trackIds.map((videoId) => ({
+                  videoId,
+                  title: videoId,
+                  channelName: 'Loading metadata',
+                  thumbnail: '',
+                  duration: 0,
+                }))).map((track, index) => (
                   <div
-                    key={videoId}
+                    key={track.videoId}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -115,11 +139,24 @@ export default function PlaylistDetailView() {
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', width: 24, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       {index + 1}
                     </span>
-                    <p style={{ flex: 1, fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-                      {videoId}
-                    </p>
+                    {track.thumbnail && (
+                      <img src={track.thumbnail} alt="" style={{ width: 42, height: 32, borderRadius: 6, objectFit: 'cover' }} />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p className="truncate" style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {track.title}
+                      </p>
+                      <p className="truncate" style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                        {track.channelName}
+                      </p>
+                    </div>
+                    {tracks.length > 0 && (
+                      <button onClick={() => playTrack(track)} className="btn-icon" title="Play">
+                        <Play size={14} fill="currentColor" />
+                      </button>
+                    )}
                     <button
-                      onClick={() => handleRemoveTrack(videoId)}
+                      onClick={() => handleRemoveTrack(track.videoId)}
                       className="btn-icon"
                       style={{ color: 'var(--text-tertiary)' }}
                       onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--error)'; }}

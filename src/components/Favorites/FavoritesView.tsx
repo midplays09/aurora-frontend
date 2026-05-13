@@ -58,7 +58,7 @@ export default function FavoritesView() {
           }}>
             <Heart size={18} style={{ color: '#EF4444' }} />
           </div>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, letterSpacing: '-0.04em' }}>
+          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, letterSpacing: 0 }}>
             Favorites
           </h1>
         </div>

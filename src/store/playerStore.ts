@@ -74,7 +74,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     });
   },
 
-  addToQueue: (track) => set((s) => ({ queue: [...s.queue, track] })),
+  addToQueue: (track) => set((s) => (
+    s.queue.some((queued) => queued.videoId === track.videoId)
+      ? s
+      : { queue: [...s.queue, track] }
+  )),
 
   removeFromQueue: (index) =>
     set((s) => ({ queue: s.queue.filter((_, i) => i !== index) })),
@@ -142,7 +146,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   toggleMute: () => set((s) => ({ isMuted: !s.isMuted })),
   cycleRepeat: () => set((s) => ({ repeatMode: (s.repeatMode + 1) % 3 })),
   toggleShuffle: () => set((s) => ({ isShuffle: !s.isShuffle })),
-  setCurrentView: (currentView) => set({ currentView }),
+  setCurrentView: (currentView) => set({ currentView, currentPlaylistId: currentView === 'playlist-detail' ? get().currentPlaylistId : null }),
   setCurrentPlaylistId: (currentPlaylistId) => set({ currentPlaylistId }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setPlayerReady: (playerReady) => set({ playerReady }),

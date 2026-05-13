@@ -35,10 +35,10 @@ export default function HomeView() {
       {/* Hero greeting */}
       <motion.div variants={item} style={{ marginBottom: 48 }}>
         <h1 style={{
-          fontSize: '2.25rem', fontWeight: 700, letterSpacing: '-0.04em',
+          fontSize: '2.25rem', fontWeight: 700, letterSpacing: 0,
           marginBottom: 8,
         }}>
-          {getGreeting()}{user ? `, ${user.email.split('@')[0]}` : ''}
+          {getGreeting()}{user ? `, ${user.displayName || user.username || user.email.split('@')[0]}` : ''}
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
           What do you want to listen to today?

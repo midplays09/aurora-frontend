@@ -5,11 +5,10 @@ import { useAuthStore } from '@/store/authStore';
 import { motion } from 'framer-motion';
 import {
   Home, Search, ListMusic, Heart, Radio, LogOut, Sun, Moon,
-  Music2, Plus, ChevronRight,
+  Plus, ChevronRight, Library,
 } from 'lucide-react';
 import type { ViewName, Playlist } from '@/types';
 import { useEffect, useState } from 'react';
-import { getInitials } from '@/lib/utils';
 import api from '@/lib/api';
 
 export default function Sidebar() {
@@ -121,21 +120,13 @@ export default function Sidebar() {
       flexShrink: 0,
       userSelect: 'none',
     }}>
-      {/* Logo */}
+      {/* Brand */}
       <div style={{
-        padding: '20px 16px 12px',
+        padding: '22px 20px 14px',
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
       }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: 7,
-          background: 'linear-gradient(135deg, var(--accent), #3B82F6)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Music2 size={14} color="white" />
-        </div>
-        <span style={{ fontSize: '0.9375rem', fontWeight: 700, letterSpacing: '-0.025em' }}>
+        <span style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: 0 }}>
           Aurora
         </span>
       </div>
@@ -152,6 +143,7 @@ export default function Sidebar() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <NavItem icon={<Home size={16} />} label="Home" view="home" />
             <NavItem icon={<Search size={16} />} label="Search" view="search" />
+            <NavItem icon={<Library size={16} />} label="Library" view="library" />
           </div>
         </div>
 
@@ -298,16 +290,8 @@ export default function Sidebar() {
             gap: 10,
             padding: '8px 12px',
           }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: 'linear-gradient(135deg, var(--accent), #3B82F6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '0.75rem', fontWeight: 600, color: 'white', flexShrink: 0,
-            }}>
-              {getInitials(user.email)}
-            </div>
             <span className="truncate" style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', flex: 1 }}>
-              {user.email}
+              {user.displayName || user.username || user.email.split('@')[0]}
             </span>
             <button
               onClick={logout}

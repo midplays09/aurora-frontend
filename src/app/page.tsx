@@ -5,11 +5,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from '@/store/authStore';
 import { usePlayerStore } from '@/store/playerStore';
 import AuthPage from '@/components/Auth/AuthPage';
+import AppHeader from '@/components/Header/AppHeader';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import PlayerBar from '@/components/Player/PlayerBar';
 import YouTubePlayer from '@/components/Player/YouTubePlayer';
 import HomeView from '@/components/Home/HomeView';
 import SearchView from '@/components/Search/SearchView';
+import LibraryView from '@/components/Library/LibraryView';
 import PlaylistsView from '@/components/Playlists/PlaylistsView';
 import PlaylistDetailView from '@/components/Playlists/PlaylistDetailView';
 import FavoritesView from '@/components/Favorites/FavoritesView';
@@ -44,13 +46,14 @@ export default function Home() {
           transition={{ duration: 0.4 }}
           style={{
             width: 40, height: 40, borderRadius: 10,
-            background: 'linear-gradient(135deg, var(--accent), #3B82F6)',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--text-primary)',
+            fontWeight: 800,
           }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-            <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-          </svg>
+          A
         </motion.div>
         <div style={{
           width: 20, height: 20,
@@ -72,6 +75,7 @@ export default function Home() {
     switch (currentView) {
       case 'home': return <HomeView />;
       case 'search': return <SearchView />;
+      case 'library': return <LibraryView />;
       case 'playlists': return <PlaylistsView />;
       case 'playlist-detail': return <PlaylistDetailView />;
       case 'favorites': return <FavoritesView />;
@@ -81,33 +85,21 @@ export default function Home() {
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      height: '100vh',
-      width: '100vw',
-      overflow: 'hidden',
-      background: 'var(--bg)',
-      color: 'var(--text-primary)',
-    }}>
+    <div className="app-frame">
       <Sidebar />
 
       <main
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          padding: '32px 40px',
-          paddingBottom: currentTrack ? 'calc(var(--player-height) + 32px)' : 32,
-        }}
-        className="scrollbar-thin"
+        className="main-stage scrollbar-thin"
+        style={{ paddingBottom: currentTrack ? 'calc(var(--player-height) + 34px)' : 34 }}
       >
+        <AppHeader />
         <AnimatePresence mode="wait">
           <motion.div
             key={currentView}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] as const }}
+            initial={{ opacity: 0, x: 18, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, x: -18, filter: 'blur(6px)' }}
+            transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] as const }}
           >
             {renderView()}
           </motion.div>

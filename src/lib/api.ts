@@ -43,8 +43,8 @@ class ApiClient {
   }
 
   // ─── Auth ──────────────────────────────────────────
-  async register(email: string, password: string) {
-    const res = await this.client.post('/api/register', { email, password });
+  async register(email: string, password: string, username: string) {
+    const res = await this.client.post('/api/register', { email, password, username });
     return res.data;
   }
 
@@ -58,6 +58,53 @@ class ApiClient {
 
   async getMe() {
     const res = await this.client.get('/api/me');
+    return res.data;
+  }
+
+  async getTracks(categoryId?: string | null) {
+    const res = await this.client.get('/api/tracks', {
+      params: categoryId ? { category: categoryId } : undefined,
+    });
+    return res.data.tracks;
+  }
+
+  async createTrack(data: { title: string; artist: string; album?: string; duration?: number; categoryId?: string | null }) {
+    const res = await this.client.post('/api/tracks', data);
+    return res.data.track;
+  }
+
+  async updateTrack(id: string, data: { title?: string; artist?: string; album?: string | null; duration?: number }) {
+    const res = await this.client.put(`/api/tracks/${id}`, data);
+    return res.data.track;
+  }
+
+  async deleteTrack(id: string) {
+    const res = await this.client.delete(`/api/tracks/${id}`);
+    return res.data;
+  }
+
+  async assignTrackCategory(id: string, categoryId: string | null) {
+    const res = await this.client.put(`/api/tracks/${id}/category`, { categoryId });
+    return res.data.track;
+  }
+
+  async getCategories() {
+    const res = await this.client.get('/api/categories');
+    return res.data.categories;
+  }
+
+  async createCategory(name: string) {
+    const res = await this.client.post('/api/categories', { name });
+    return res.data.category;
+  }
+
+  async updateCategory(id: string, name: string) {
+    const res = await this.client.put(`/api/categories/${id}`, { name });
+    return res.data.category;
+  }
+
+  async deleteCategory(id: string) {
+    const res = await this.client.delete(`/api/categories/${id}`);
     return res.data;
   }
 

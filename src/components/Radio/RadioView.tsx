@@ -74,7 +74,7 @@ export default function RadioView() {
           }}>
             <RadioIcon size={18} style={{ color: '#22C55E' }} />
           </div>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, letterSpacing: '-0.04em' }}>Radio</h1>
+          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, letterSpacing: 0 }}>Radio</h1>
         </div>
 
         {/* Filters */}
