@@ -52,21 +52,14 @@ export default function AuthPage() {
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
         className="auth-brand-panel"
       >
-        <div className="auth-hero-copy">
+        <div className="auth-hero-copy" style={{ textAlign: 'center', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.18, duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
           >
-            Better audio, by design.
+            Welcome to Aurora.
           </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.32, duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
-          >
-            The focused environment for your entire library. Free today, free tomorrow, always free.
-          </motion.p>
         </div>
 
       </motion.div>

@@ -18,8 +18,9 @@ const item = {
 };
 
 export default function HomeView() {
-  const { playTrack, addToQueue } = usePlayerStore();
-  const { user } = useAuthStore();
+  const playTrack = usePlayerStore((s) => s.playTrack);
+  const addToQueue = usePlayerStore((s) => s.addToQueue);
+  const user = useAuthStore((s) => s.user);
   
   const [trending, setTrending] = useState<YouTubeTrack[]>([]);
   const [chillVibes, setChillVibes] = useState<YouTubeTrack[]>([]);

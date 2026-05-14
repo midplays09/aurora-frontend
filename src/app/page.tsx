@@ -20,8 +20,12 @@ import RadioView from '@/components/Radio/RadioView';
 import SettingsView from '@/components/Settings/SettingsView';
 
 export default function Home() {
-  const { isAuthenticated, restoreSession, isLoading: authLoading } = useAuthStore();
-  const { currentView, currentTrack } = usePlayerStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const restoreSession = useAuthStore((s) => s.restoreSession);
+  const authLoading = useAuthStore((s) => s.isLoading);
+  const currentView = usePlayerStore((s) => s.currentView);
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
@@ -42,21 +46,6 @@ export default function Home() {
         display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center',
         background: 'var(--bg)', flexDirection: 'column', gap: 16,
       }}>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          style={{
-            width: 40, height: 40, borderRadius: 10,
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--text-primary)',
-            fontWeight: 800,
-          }}
-        >
-          A
-        </motion.div>
         <div style={{
           width: 20, height: 20,
           border: '2px solid var(--border)',
