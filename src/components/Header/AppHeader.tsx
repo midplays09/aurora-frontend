@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Bell, ChevronDown, Compass, Library, Moon, Radio, Search, Sun,
@@ -17,14 +17,24 @@ const navItems: Array<{ label: string; view: ViewName; icon: React.ReactNode }> 
 ];
 
 export default function AppHeader() {
-  const { currentView, setCurrentView, setSearchQuery } = usePlayerStore();
-  const { user, logout } = useAuthStore();
+  const { currentView, setCurrentView, setSearchQuery, searchQuery } = usePlayerStore();
+  const { user } = useAuthStore();
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = (localStorage.getItem('aurora_theme') || 'dark') as 'dark' | 'light';
     setTheme(saved);
     document.documentElement.setAttribute('data-theme', saved);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const toggleTheme = () => {
@@ -34,9 +44,11 @@ export default function AppHeader() {
     document.documentElement.setAttribute('data-theme', next);
   };
 
-  const openSearch = () => {
-    setCurrentView('search');
-    setSearchQuery('');
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setCurrentView('search');
+    }
   };
 
   return (
@@ -68,11 +80,19 @@ export default function AppHeader() {
       </nav>
 
       <div className="header-actions">
-        <button className="command-button" onClick={openSearch}>
-          <Search size={15} />
-          <span>Search music</span>
-          <kbd>/</kbd>
-        </button>
+        <form onSubmit={handleSearchSubmit} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <Search size={15} style={{ position: 'absolute', left: 12, color: 'var(--text-tertiary)' }} />
+          <input
+            ref={searchInputRef}
+            type="text"
+            className="command-button"
+            placeholder="Search music"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ paddingLeft: 34, paddingRight: 34, textAlign: 'left', outline: 'none', width: 220 }}
+          />
+          <kbd style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>/</kbd>
+        </form>
         <button className="icon-button" onClick={toggleTheme} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
@@ -80,7 +100,7 @@ export default function AppHeader() {
           <Bell size={16} />
         </button>
         {user && (
-          <button className="profile-button" onClick={logout} title="Sign out">
+          <button className="profile-button" onClick={() => setCurrentView('settings')} title="Settings">
             <span>{user.displayName || user.username || user.email.split('@')[0]}</span>
             <ChevronDown size={13} />
           </button>

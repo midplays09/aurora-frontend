@@ -1,127 +1,149 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { usePlayerStore } from '@/store/playerStore';
 import { useAuthStore } from '@/store/authStore';
-import { Search, Play, Heart, Radio, ListMusic, ArrowRight } from 'lucide-react';
+import { Play } from 'lucide-react';
+import api from '@/lib/api';
+import type { YouTubeTrack } from '@/types';
 
 const container = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
+  show: { opacity: 1, transition: { staggerChildren: 0.08 } },
 };
 const item = {
-  hidden: { opacity: 0, y: 12 },
+  hidden: { opacity: 0, y: 16 },
   show: { opacity: 1, y: 0, transition: { ease: [0.22, 1, 0.36, 1] as const, duration: 0.5 } },
 };
 
 export default function HomeView() {
-  const { setCurrentView } = usePlayerStore();
+  const { playTrack, addToQueue } = usePlayerStore();
   const { user } = useAuthStore();
+  
+  const [trending, setTrending] = useState<YouTubeTrack[]>([]);
+  const [chillVibes, setChillVibes] = useState<YouTubeTrack[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const quickActions = [
-    { icon: <Search size={20} />, label: 'Search Music', desc: 'Find any track on YouTube', view: 'search' as const, color: '#8B5CF6' },
-    { icon: <Heart size={20} />, label: 'Favorites', desc: 'Your liked tracks', view: 'favorites' as const, color: '#EF4444' },
-    { icon: <ListMusic size={20} />, label: 'Playlists', desc: 'Your custom collections', view: 'playlists' as const, color: '#3B82F6' },
-    { icon: <Radio size={20} />, label: 'Live Radio', desc: 'Worldwide stations', view: 'radio' as const, color: '#22C55E' },
-  ];
+  useEffect(() => {
+    let mounted = true;
+    const fetchDiscover = async () => {
+      try {
+        setLoading(true);
+        // We do a couple parallel searches for standard discover topics
+        const [trendingRes, chillRes] = await Promise.all([
+          api.searchYouTube('trending music hits', 12),
+          api.searchYouTube('lofi hip hop chill beats', 12)
+        ]);
+        if (mounted) {
+          setTrending(trendingRes);
+          setChillVibes(chillRes);
+        }
+      } catch (err) {
+        console.error('Failed to load discover content', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    fetchDiscover();
+    return () => { mounted = false; };
+  }, []);
+
+  const TrackRow = ({ tracks, title }: { tracks: YouTubeTrack[], title: string }) => (
+    <motion.div variants={item} style={{ marginBottom: 40 }}>
+      <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 16, color: 'var(--text-primary)' }}>
+        {title}
+      </h2>
+      <div 
+        className="scrollbar-thin"
+        style={{ 
+          display: 'flex', 
+          gap: 16, 
+          overflowX: 'auto', 
+          paddingBottom: 16,
+          margin: '0 -20px',
+          padding: '0 20px 16px 20px'
+        }}
+      >
+        {tracks.map((track) => (
+          <div 
+            key={track.videoId}
+            className="group"
+            style={{ 
+              width: 160, 
+              flexShrink: 0, 
+              background: 'var(--surface)', 
+              padding: 12, 
+              borderRadius: 'var(--radius-lg)',
+              cursor: 'pointer',
+              transition: 'background 200ms ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
+            onClick={() => playTrack(track)}
+          >
+            <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', marginBottom: 12, borderRadius: 8, overflow: 'hidden' }}>
+              <img src={track.thumbnail} alt={track.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div 
+                style={{
+                  position: 'absolute', bottom: 8, right: 8, 
+                  width: 40, height: 40, borderRadius: '50%',
+                  background: 'var(--accent)', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  opacity: 0, transform: 'translateY(8px)',
+                  transition: 'all 200ms ease',
+                  boxShadow: '0 8px 16px rgba(0,0,0,0.3)'
+                }}
+                className="group-hover-play"
+              >
+                <Play size={20} fill="currentColor" style={{ marginLeft: 2 }} />
+              </div>
+            </div>
+            <p className="truncate" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+              {track.title}
+            </p>
+            <p className="truncate" style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+              {track.channelName}
+            </p>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
 
   return (
     <motion.div
       variants={container}
       initial="hidden"
       animate="show"
-      style={{ maxWidth: 900, margin: '0 auto' }}
+      style={{ padding: '32px' }}
     >
       {/* Hero greeting */}
-      <motion.div variants={item} style={{ marginBottom: 48 }}>
+      <motion.div variants={item} style={{ marginBottom: 40 }}>
         <h1 style={{
-          fontSize: '2.25rem', fontWeight: 700, letterSpacing: 0,
-          marginBottom: 8,
+          fontSize: '2rem', fontWeight: 700, letterSpacing: '-0.02em',
+          marginBottom: 8, color: 'var(--text-primary)'
         }}>
           {getGreeting()}{user ? `, ${user.displayName || user.username || user.email.split('@')[0]}` : ''}
         </h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
-          What do you want to listen to today?
-        </p>
       </motion.div>
 
-      {/* Quick Actions */}
-      <motion.div variants={item}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-          gap: 12,
-        }}>
-          {quickActions.map((action) => (
-            <motion.button
-              key={action.label}
-              onClick={() => setCurrentView(action.view)}
-              whileHover={{ y: -2, transition: { duration: 0.2 } }}
-              whileTap={{ scale: 0.98 }}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                gap: 12,
-                padding: 20,
-                borderRadius: 12,
-                border: '1px solid var(--border)',
-                background: 'var(--surface)',
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontFamily: 'var(--font-sans)',
-                transition: 'border-color 200ms ease, box-shadow 200ms ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border-hover)';
-                e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              <div style={{
-                width: 40, height: 40, borderRadius: 10,
-                background: `${action.color}15`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: action.color,
-              }}>
-                {action.icon}
-              </div>
-              <div>
-                <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
-                  {action.label}
-                </p>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                  {action.desc}
-                </p>
-              </div>
-              <ArrowRight size={14} style={{ color: 'var(--text-tertiary)', marginTop: 'auto' }} />
-            </motion.button>
-          ))}
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0' }}>
+          <div style={{ width: 32, height: 32, border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%' }} className="animate-spin" />
         </div>
-      </motion.div>
-
-      {/* Keyboard shortcut hint */}
-      <motion.div
-        variants={item}
-        style={{
-          marginTop: 48,
-          padding: '16px 20px',
-          borderRadius: 10,
-          border: '1px solid var(--border)',
-          background: 'var(--surface)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
-        <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.8125rem' }}>
-          Click <strong style={{ color: 'var(--text-primary)' }}>Search</strong> in the sidebar to find music from YouTube&apos;s entire catalog.
-        </p>
-      </motion.div>
+      ) : (
+        <>
+          <style>{`
+            .group:hover .group-hover-play {
+              opacity: 1 !important;
+              transform: translateY(0) !important;
+            }
+          `}</style>
+          {trending.length > 0 && <TrackRow tracks={trending} title="Trending Now" />}
+          {chillVibes.length > 0 && <TrackRow tracks={chillVibes} title="Chill Vibes" />}
+        </>
+      )}
     </motion.div>
   );
 }

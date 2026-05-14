@@ -11,6 +11,8 @@ export default function YouTubePlayer() {
     currentTrack, isPlaying, volume, isMuted,
     setIsPlaying, setCurrentTime, setDuration,
     setPlayerReady, playNext,
+    seekRequest, setSeekRequest,
+    isVideoPopupOpen, setIsVideoPopupOpen,
   } = usePlayerStore();
 
   const playerRef = useRef<ReturnType<YouTubeEvent['target']['getInternalPlayer']> | null>(null);
@@ -42,6 +44,15 @@ export default function YouTubePlayer() {
       } catch { /* ignore */ }
     }
   }, [volume, isMuted]);
+
+  useEffect(() => {
+    if (seekRequest !== null && playerRef.current) {
+      try {
+        playerRef.current.seekTo(seekRequest, true);
+      } catch { /* ignore */ }
+      setSeekRequest(null);
+    }
+  }, [seekRequest, setSeekRequest]);
 
   const onReady = (event: YouTubeEvent) => {
     playerRef.current = event.target;
@@ -90,24 +101,62 @@ export default function YouTubePlayer() {
   if (!currentTrack) return null;
 
   return (
-    <div style={{ position: 'fixed', bottom: 100, right: 20, zIndex: 100, opacity: 0.01, pointerEvents: 'none', width: 1, height: 1, overflow: 'hidden' }}>
-      <YouTube
-        videoId={currentTrack.videoId}
-        opts={{
-          height: '1',
-          width: '1',
-          playerVars: {
-            autoplay: 1,
-            controls: 0,
-            disablekb: 1,
-            fs: 0,
-            modestbranding: 1,
-            rel: 0,
-          },
+    <>
+      <div 
+        style={{ 
+          position: 'fixed', 
+          bottom: 100, 
+          right: 20, 
+          zIndex: isVideoPopupOpen ? 9999 : 100, 
+          opacity: isVideoPopupOpen ? 1 : 0.01, 
+          pointerEvents: isVideoPopupOpen ? 'auto' : 'none', 
+          width: isVideoPopupOpen ? 480 : 1, 
+          height: isVideoPopupOpen ? 270 : 1, 
+          overflow: 'hidden',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: isVideoPopupOpen ? 'var(--shadow-lg)' : 'none',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          background: 'var(--surface-hover)'
         }}
-        onReady={onReady}
-        onStateChange={onStateChange}
-      />
-    </div>
+      >
+        {isVideoPopupOpen && (
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '12px 16px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)', display: 'flex', justifyContent: 'space-between', zIndex: 10 }}>
+            <span style={{ color: '#fff', fontSize: '0.875rem', fontWeight: 500, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>Now Playing</span>
+            <button onClick={() => setIsVideoPopupOpen(false)} style={{ color: '#fff', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.8 }}>✕</button>
+          </div>
+        )}
+        <YouTube
+          videoId={currentTrack.videoId}
+          opts={{
+            height: isVideoPopupOpen ? '270' : '1',
+            width: isVideoPopupOpen ? '480' : '1',
+            playerVars: {
+              autoplay: 1,
+              controls: isVideoPopupOpen ? 1 : 0,
+              disablekb: 1,
+              fs: 0,
+              modestbranding: 1,
+              rel: 0,
+            },
+          }}
+          onReady={onReady}
+          onStateChange={onStateChange}
+          style={{ width: '100%', height: '100%' }}
+        />
+      </div>
+      
+      {isVideoPopupOpen && (
+        <div 
+          onClick={() => setIsVideoPopupOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'var(--overlay)',
+            zIndex: 9998,
+            backdropFilter: 'blur(4px)'
+          }}
+        />
+      )}
+    </>
   );
 }

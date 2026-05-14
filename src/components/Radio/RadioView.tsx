@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Radio as RadioIcon, Search, Play, Pause, Loader2, Globe } from 'lucide-react';
+import { usePlayerStore } from '@/store/playerStore';
 import api from '@/lib/api';
-import type { RadioStation, RadioCountry } from '@/types';
+import type { RadioStation, RadioCountry, YouTubeTrack } from '@/types';
 
 const container = {
   hidden: { opacity: 0 },
@@ -16,13 +17,13 @@ const item = {
 };
 
 export default function RadioView() {
+  const { currentTrack, isPlaying, playTrack, setIsPlaying } = usePlayerStore();
+  
   const [countries, setCountries] = useState<RadioCountry[]>([]);
   const [stations, setStations] = useState<RadioStation[]>([]);
   const [selectedCountry, setSelectedCountry] = useState('US');
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [playingUrl, setPlayingUrl] = useState<string | null>(null);
-  const [audio] = useState<HTMLAudioElement | null>(typeof window !== 'undefined' ? new Audio() : null);
 
   useEffect(() => {
     api.getRadioCountries().then((c) => {
@@ -44,20 +45,21 @@ export default function RadioView() {
   }, [selectedCountry, search]);
 
   const togglePlay = (station: RadioStation) => {
-    if (!audio) return;
-    if (playingUrl === station.url) {
-      audio.pause();
-      setPlayingUrl(null);
+    if (currentTrack?.streamUrl === station.url) {
+      setIsPlaying(!isPlaying);
     } else {
-      audio.src = station.url;
-      audio.play().catch(() => {});
-      setPlayingUrl(station.url);
+      const track: YouTubeTrack = {
+        videoId: `radio-${station.id}`,
+        title: station.name,
+        channelName: station.country,
+        thumbnail: station.favicon || '',
+        duration: 0,
+        streamUrl: station.url,
+        isRadio: true,
+      };
+      playTrack(track);
     }
   };
-
-  useEffect(() => {
-    return () => { audio?.pause(); };
-  }, [audio]);
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
@@ -127,7 +129,8 @@ export default function RadioView() {
           style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}
         >
           {stations.map((station) => {
-            const isActive = playingUrl === station.url;
+            const isActive = currentTrack?.streamUrl === station.url;
+            const isStationPlaying = isActive && isPlaying;
             return (
               <motion.div
                 key={station.id}
@@ -179,7 +182,7 @@ export default function RadioView() {
                   flexShrink: 0,
                   transition: 'all 150ms ease',
                 }}>
-                  {isActive ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" style={{ marginLeft: 1 }} />}
+                  {isStationPlaying ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" style={{ marginLeft: 1 }} />}
                 </div>
               </motion.div>
             );

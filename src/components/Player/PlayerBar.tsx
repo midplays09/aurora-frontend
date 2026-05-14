@@ -4,7 +4,7 @@ import { usePlayerStore } from '@/store/playerStore';
 import { formatDuration } from '@/lib/utils';
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
-  Repeat, Repeat1, Shuffle, ListMusic,
+  Repeat, Repeat1, Shuffle, ListMusic, MonitorPlay, Mic2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -14,11 +14,20 @@ export default function PlayerBar() {
     volume, isMuted, repeatMode, isShuffle,
     setIsPlaying, setVolume, toggleMute,
     cycleRepeat, toggleShuffle, playNext, playPrevious,
+    setSeekRequest, isVideoPopupOpen, setIsVideoPopupOpen,
+    isLyricsOpen, setIsLyricsOpen,
   } = usePlayerStore();
 
   if (!currentTrack) return null;
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (duration <= 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    setSeekRequest(percent * duration);
+  };
 
   return (
     <AnimatePresence>
@@ -110,10 +119,13 @@ export default function PlayerBar() {
             <span style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', width: 36, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
               {formatDuration(currentTime)}
             </span>
-            <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'var(--border)', position: 'relative', cursor: 'pointer' }}>
+            <div 
+              onClick={handleProgressClick}
+              style={{ flex: 1, height: 4, borderRadius: 2, background: 'var(--border)', position: 'relative', cursor: 'pointer' }}
+            >
               <div style={{
                 height: '100%', borderRadius: 2,
-                background: 'var(--text-primary)',
+                background: 'var(--accent)',
                 width: `${progress}%`,
                 transition: 'width 100ms linear',
               }} />
@@ -125,11 +137,24 @@ export default function PlayerBar() {
         </div>
 
         {/* Right — Volume + Queue */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: 180, justifyContent: 'flex-end', flexShrink: 0 }}>
-          <button className="btn-icon" style={{ opacity: 0.6 }}>
-            <ListMusic size={16} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: 220, justifyContent: 'flex-end', flexShrink: 0 }}>
+          <button 
+            className="btn-icon" 
+            onClick={() => setIsLyricsOpen(!isLyricsOpen)}
+            style={{ color: isLyricsOpen ? 'var(--accent)' : 'var(--text-tertiary)' }}
+            title="Lyrics"
+          >
+            <Mic2 size={16} />
           </button>
-          <button onClick={toggleMute} className="btn-icon">
+          <button 
+            className="btn-icon" 
+            onClick={() => setIsVideoPopupOpen(!isVideoPopupOpen)}
+            style={{ color: isVideoPopupOpen ? 'var(--accent)' : 'var(--text-tertiary)' }}
+            title="Watch Video"
+          >
+            <MonitorPlay size={16} />
+          </button>
+          <button onClick={toggleMute} className="btn-icon" style={{ marginLeft: 8 }}>
             {isMuted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
           <input
@@ -138,7 +163,12 @@ export default function PlayerBar() {
             max={100}
             value={isMuted ? 0 : volume}
             onChange={(e) => setVolume(Number(e.target.value))}
-            style={{ width: 80, accentColor: 'var(--accent)' }}
+            style={{ 
+              width: 80, 
+              accentColor: 'var(--accent)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
           />
         </div>
       </motion.div>

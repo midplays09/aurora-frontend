@@ -1147,3 +1147,22 @@ input[type=range]:focus { outline: none; }
     display: flex;
   }
 }
+
+@media (max-width: 768px) {
+  .hidden-md { display: none !important; }
+  .block-md { display: block !important; }
+  .flex-md { display: flex !important; }
+  
+  :root {
+    --sidebar-width: 0px;
+  }
+  
+  .app-frame .main-stage::before { left: 0; }
+  .app-header { left: 14px; }
+}
+
+@media (max-width: 480px) {
+  .hidden-sm { display: none !important; }
+  .block-sm { display: block !important; }
+  .flex-sm { display: flex !important; }
+}

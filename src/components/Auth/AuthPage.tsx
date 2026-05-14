@@ -52,35 +52,23 @@ export default function AuthPage() {
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
         className="auth-brand-panel"
       >
-        <div className="auth-logo-row">
-          <span>Aurora</span>
-          <span className="auth-nav-pill">Private beta</span>
-        </div>
-
         <div className="auth-hero-copy">
-          <span className="auth-eyebrow">Designed for listening systems</span>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.18, duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
           >
-            The focused audio workspace.
+            Better audio, by design.
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.32, duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
           >
-            Search, collect, organize, and play from one fast interface with a calm Linear-inspired surface.
+            The focused environment for your entire library. Free today, free tomorrow, always free.
           </motion.p>
         </div>
 
-        <div className="auth-preview" aria-hidden="true">
-          <div className="auth-preview-bar"><span /><span /><span /></div>
-          <div className="auth-preview-row active"><span>Discover queue</span><strong>12</strong></div>
-          <div className="auth-preview-row"><span>Library tracks</span><strong>48</strong></div>
-          <div className="auth-preview-row"><span>Live radio</span><strong>On</strong></div>
-        </div>
       </motion.div>
 
       <div className="auth-form-stage">
@@ -94,7 +82,6 @@ export default function AuthPage() {
             <span>Aurora</span>
           </div>
 
-          <div className="auth-card-kicker">Secure access</div>
           <h2 style={{ fontSize: '1.55rem', fontWeight: 700, letterSpacing: 0, marginBottom: 6 }}>
             {mode === 'login' ? 'Welcome back' : 'Create your account'}
           </h2>

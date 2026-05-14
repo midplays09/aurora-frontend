@@ -4,7 +4,7 @@ import { usePlayerStore } from '@/store/playerStore';
 import { useAuthStore } from '@/store/authStore';
 import { motion } from 'framer-motion';
 import {
-  Home, Search, ListMusic, Heart, Radio, LogOut, Sun, Moon,
+  Home, Search, ListMusic, Heart, Radio,
   Plus, ChevronRight, Library,
 } from 'lucide-react';
 import type { ViewName, Playlist } from '@/types';
@@ -12,31 +12,21 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 
 export default function Sidebar() {
-  const { currentView, setCurrentView, setCurrentPlaylistId, setSearchQuery } = usePlayerStore();
-  const { isAuthenticated, user, logout } = useAuthStore();
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const currentView = usePlayerStore((s) => s.currentView);
+  const setCurrentView = usePlayerStore((s) => s.setCurrentView);
+  const setCurrentPlaylistId = usePlayerStore((s) => s.setCurrentPlaylistId);
+  const setSearchQuery = usePlayerStore((s) => s.setSearchQuery);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [showNewPlaylist, setShowNewPlaylist] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
-
-  useEffect(() => {
-    const saved = localStorage.getItem('aurora_theme') || 'dark';
-    setTheme(saved as 'dark' | 'light');
-    document.documentElement.setAttribute('data-theme', saved);
-  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
       api.getPlaylists().then(setPlaylists).catch(() => {});
     }
   }, [isAuthenticated, currentView]);
-
-  const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    localStorage.setItem('aurora_theme', next);
-    document.documentElement.setAttribute('data-theme', next);
-  };
 
   const handleCreatePlaylist = async () => {
     if (!newPlaylistName.trim()) return;
@@ -120,19 +110,8 @@ export default function Sidebar() {
       flexShrink: 0,
       userSelect: 'none',
     }}>
-      {/* Brand */}
-      <div style={{
-        padding: '22px 20px 14px',
-        display: 'flex',
-        alignItems: 'center',
-      }}>
-        <span style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: 0 }}>
-          Aurora
-        </span>
-      </div>
-
       {/* Navigation */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 16px' }} className="scrollbar-thin">
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 8px' }} className="scrollbar-thin">
         {/* Discover */}
         <div style={{ marginBottom: 20 }}>
           <p style={{
@@ -249,65 +228,6 @@ export default function Sidebar() {
           }}>Live</p>
           <NavItem icon={<Radio size={16} />} label="Radio" view="radio" />
         </div>
-      </div>
-
-      {/* Bottom — User + Theme */}
-      <div style={{
-        padding: '12px',
-        borderTop: '1px solid var(--border)',
-      }}>
-        {/* Theme toggle */}
-        <button
-          onClick={toggleTheme}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '7px 12px',
-            borderRadius: 8,
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '0.8125rem',
-            fontFamily: 'var(--font-sans)',
-            color: 'var(--text-secondary)',
-            background: 'transparent',
-            transition: 'all 150ms ease',
-            marginBottom: 4,
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-        >
-          {theme === 'dark' ? <Sun size={16} style={{ opacity: 0.6 }} /> : <Moon size={16} style={{ opacity: 0.6 }} />}
-          <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
-        </button>
-
-        {/* User */}
-        {isAuthenticated && user && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '8px 12px',
-          }}>
-            <span className="truncate" style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', flex: 1 }}>
-              {user.displayName || user.username || user.email.split('@')[0]}
-            </span>
-            <button
-              onClick={logout}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--text-tertiary)', display: 'flex', padding: 4,
-                borderRadius: 4, transition: 'all 150ms ease', flexShrink: 0,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--error)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; }}
-              title="Sign out"
-            >
-              <LogOut size={14} />
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

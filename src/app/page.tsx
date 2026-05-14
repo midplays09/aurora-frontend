@@ -9,6 +9,7 @@ import AppHeader from '@/components/Header/AppHeader';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import PlayerBar from '@/components/Player/PlayerBar';
 import YouTubePlayer from '@/components/Player/YouTubePlayer';
+import LyricsOverlay from '@/components/Player/LyricsOverlay';
 import HomeView from '@/components/Home/HomeView';
 import SearchView from '@/components/Search/SearchView';
 import LibraryView from '@/components/Library/LibraryView';
@@ -16,6 +17,7 @@ import PlaylistsView from '@/components/Playlists/PlaylistsView';
 import PlaylistDetailView from '@/components/Playlists/PlaylistDetailView';
 import FavoritesView from '@/components/Favorites/FavoritesView';
 import RadioView from '@/components/Radio/RadioView';
+import SettingsView from '@/components/Settings/SettingsView';
 
 export default function Home() {
   const { isAuthenticated, restoreSession, isLoading: authLoading } = useAuthStore();
@@ -80,6 +82,7 @@ export default function Home() {
       case 'playlist-detail': return <PlaylistDetailView />;
       case 'favorites': return <FavoritesView />;
       case 'radio': return <RadioView />;
+      case 'settings': return <SettingsView />;
       default: return <HomeView />;
     }
   };
@@ -107,6 +110,7 @@ export default function Home() {
       </main>
 
       <PlayerBar />
+      <LyricsOverlay />
       <YouTubePlayer />
     </div>
   );

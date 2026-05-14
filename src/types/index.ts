@@ -5,6 +5,8 @@ export interface YouTubeTrack {
   channelName: string;
   thumbnail: string;
   duration: number; // seconds
+  streamUrl?: string; // For live radio
+  isRadio?: boolean;
 }
 
 export interface LibraryTrack {
@@ -106,4 +108,5 @@ export type ViewName =
   | 'playlists'
   | 'playlist-detail'
   | 'favorites'
-  | 'radio';
+  | 'radio'
+  | 'settings';

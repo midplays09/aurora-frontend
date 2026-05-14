@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { YouTubeTrack, ViewName } from '@/types';
+import api from '@/lib/api';
 
 interface PlayerState {
   // Current playback
@@ -21,6 +22,9 @@ interface PlayerState {
 
   // Player ref
   playerReady: boolean;
+  seekRequest: number | null;
+  isVideoPopupOpen: boolean;
+  isLyricsOpen: boolean;
 
   // Actions
   setCurrentTrack: (track: YouTubeTrack | null) => void;
@@ -41,6 +45,9 @@ interface PlayerState {
   setCurrentPlaylistId: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
   setPlayerReady: (ready: boolean) => void;
+  setSeekRequest: (time: number | null) => void;
+  setIsVideoPopupOpen: (open: boolean) => void;
+  setIsLyricsOpen: (open: boolean) => void;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -58,6 +65,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentPlaylistId: null,
   searchQuery: '',
   playerReady: false,
+  seekRequest: null,
+  isVideoPopupOpen: false,
+  isLyricsOpen: false,
 
   setCurrentTrack: (track) => set({ currentTrack: track }),
 
@@ -85,7 +95,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   clearQueue: () => set({ queue: [] }),
 
-  playNext: () => {
+  playNext: async () => {
     const { queue, currentTrack, history, repeatMode, isShuffle } = get();
     if (repeatMode === 2 && currentTrack) {
       // Repeat one — restart same track
@@ -118,6 +128,28 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         isPlaying: true,
         currentTime: 0,
       });
+    } else if (currentTrack) {
+      // Smart Autoplay: Fetch related video
+      try {
+        const query = `${currentTrack.channelName || ''} music`;
+        const results = await api.searchYouTube(query, 15);
+        const related = results.filter((r: YouTubeTrack) => r.videoId !== currentTrack.videoId);
+        
+        if (related.length > 0) {
+          const next = related[Math.floor(Math.random() * Math.min(5, related.length))];
+          const newHistory = [currentTrack, ...history].slice(0, 50);
+          set({
+            currentTrack: next,
+            history: newHistory,
+            isPlaying: true,
+            currentTime: 0,
+          });
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to autoplay next track', err);
+      }
+      set({ isPlaying: false });
     } else {
       set({ isPlaying: false });
     }
@@ -150,4 +182,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setCurrentPlaylistId: (currentPlaylistId) => set({ currentPlaylistId }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setPlayerReady: (playerReady) => set({ playerReady }),
+  setSeekRequest: (time) => set({ seekRequest: time }),
+  setIsVideoPopupOpen: (open) => set({ isVideoPopupOpen: open }),
+  setIsLyricsOpen: (open) => set({ isLyricsOpen: open }),
 }));
