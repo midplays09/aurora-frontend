@@ -7,15 +7,18 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "electron-forge start",
     "electron": "electron .",
     "electron:dev": "concurrently \"next dev\" \"wait-on http://localhost:3000 && electron .\"",
     "electron:build": "next build && electron-builder",
-    "lint": "next lint"
+    "lint": "next lint",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.10",
     "axios": "^1.7.0",
+    "electron-squirrel-startup": "^1.0.1",
     "framer-motion": "^12.38.0",
     "jsmediatags": "^3.9.7",
     "lucide-react": "^1.14.0",
@@ -27,12 +30,20 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@electron-forge/cli": "^7.11.1",
+    "@electron-forge/maker-deb": "^7.11.1",
+    "@electron-forge/maker-rpm": "^7.11.1",
+    "@electron-forge/maker-squirrel": "^7.11.1",
+    "@electron-forge/maker-zip": "^7.11.1",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
+    "@electron-forge/plugin-fuses": "^7.11.1",
+    "@electron/fuses": "^1.8.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "concurrently": "^9.0.0",
     "electron": "^33.0.0",
-    "electron-builder": "^25.0.0",
+    "electron-builder": "^26.8.1",
     "typescript": "^5.7.0",
     "wait-on": "^8.0.0"
   },

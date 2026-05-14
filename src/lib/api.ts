@@ -15,7 +15,7 @@ class ApiClient {
 
     this.client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
       if (this.token) {
-        config.headers.Authorization = `Bearer ${this.token}`;
+        config.headers['Authorization'] = `Bearer ${this.token}`;
       }
       return config;
     });
